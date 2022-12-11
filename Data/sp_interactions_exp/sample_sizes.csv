@@ -1,0 +1,121 @@
+Pot_number,Composition,Notes,C_or_D
+1,BB,,C
+2,AADD,,C
+3,AACC,,D
+4,AAAA,,C
+5,DDDD,,C
+6,AACC,,C
+7,DDDD,,C
+8,OVAT-C,,D
+9,AADD,,C
+10,BD,,D
+11,OVAT-C,,D
+12,AACC,,C
+13,CCCC,,D
+14,CCCC,,D
+15,AACC,,C
+16,AMYG-A,,C
+17,BB,,C
+18,AACC,,D
+19,AADD,,C
+20,CCDD,,D
+21,AMYG-A,,D
+22,CD,Intended to be CCDD,C
+23,VIMI-D,,C
+24,BC,,D
+25,AADD,,D
+26,AACC,,C
+27,BC,,C
+28,CCDD,,C
+29,AADD,,D
+30,CCDD,,D
+31,CCDD,,C
+32,AACC,,D
+33,BD,,C
+34,DDDD,,D
+35,AAAA,,D
+36,AMYG-A,,D
+37,DD,Intended to be DDDD,C
+38,OBLI-B,,C
+39,CCDD,,D
+40,VIMI-D,,C
+41,AADD,,C
+42,CCCC,,C
+43,VIMI-D,,D
+44,DDDD,,D
+45,NA,Nothing there,NA
+46,CCCC,,C
+47,CCCC,,D
+48,NA,Nothing there,NA
+49,VIMI-D,,D
+50,CCCC,,D
+51,AMYG-A,,D
+52,AMYG-A,Intended to be AAAA,C
+53,AMYG-A,,C
+54,OVAT-C,,D
+55,AMYG-A,,D
+56,OVAT-C,,C
+57,NA,Nothing there,NA
+58,BD,,D
+59,AAAA,,D
+60,AACC,,D
+61,DDDD,,D
+62,VIMI-D,,C
+63,DDDD,,C
+64,OVAT-C,,C
+65,DDDD,,D
+66,OBLI-B,,D
+67,BC,,D
+68,NA,Nothing there,NA
+69,VIMI-D,,D
+70,AADD,,D
+71,AACC,,C
+72,AMYG-A,,C
+73,AAAA,,C
+74,AADD,,C
+75,AAAA,,C
+76,VIMI-D,,C
+77,AAAA,,C
+78,OBLI-B,,D
+79,VIMI-D,,C
+80,DDDD,,C
+81,CCDD,,C
+82,AACC,,D
+83,BB,,D
+84,AB,,C
+85,BD,,C
+86,AADD,,D
+87,AAA,Intended to be AADD,C
+88,BB,,D
+89,CCCC,,C
+90,DDDD,,C
+91,CCCC,,C
+92,CCDD,,C
+93,AAAA,,C
+94,CCCC,,D
+95,AAAA,,D
+96,OBLI-B,,C
+97,CCDD,,D
+98,BB,,C
+99,AB,,D
+100,VIMI-D,,D
+101,OVAT-C,,C
+102,AAAA,,D
+103,AMYG-A,,D
+104,OVAT-C,,C
+105,AB,,C
+106,CCDD,,C
+107,VIMI-D,,D
+108,CCCC,,C
+109,OVAT-C,,C
+110,NA,Nothing there,NA
+111,BC,Check IDs,C
+112,DDDD,Check IDs - BBDD?,C
+113,AAAA,Needs a pot number; check IDs,D
+114,VIMI-D,Was intended to be BD (labelled as such); Needs a pot number,C
+115,CCCC,Was intended to be BC (labelled as such); Needs a pot number,D
+116,DDDD,Was intended to be BD (labelled as such); Needs a pot number,D
+117,OVAT-C,Was intended to be BC (labelled as such); Needs a pot number,D
+118,AAAA,Was intended to be AB (labelled as such); Needs a pot number,C
+119,CCCC,Was intended to be BC (labelled as such); Needs a pot number,C
+120,AMYG-A,Was intended to be AB (labelled as such); Needs a pot number,C
