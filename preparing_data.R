@@ -5,15 +5,6 @@
 ### Importing packages ####
 library(tidyverse)
 library(ggplot2)
-###### Calculating sample sizes 22/08/2021 ####
-samplesizedata <- read_csv("Data/sp_interactions_exp/sample_sizes.csv")
-samplesizes <- samplesizedata %>% group_by(Composition) %>% tally()
-#Sample sizes of droughts and control pots - allocated starting with C
-# by composition then C/D/C/D based on first two days of transpiration
-samplesizeswatering <- samplesizedata %>% group_by(Composition, C_or_D) %>% tally()
-##Updated sample sizes December 2022 ####
-onerowpot <- alldata %>% group_by(Pot_number) %>% filter(row_number()==1)
-samplesizestable <- onerowpot %>% group_by(Composition) %>% tally()
 
 ### Preparing data ####
 heightdata <- read_csv("Data/sp_interactions_exp/height_data_2021.csv")
@@ -66,6 +57,18 @@ alldata <- within(alldata, Species[Species == "D"] <- "VIMI")
 
 # Making plant-within-pot ID, keeping species to be informative
 alldata <- alldata %>% unite("plantid", Pot_number:Plant_number:Species, remove = FALSE)
+
+### Importing soil moisture data ####
+moisturedataraw <- read_csv("Data/sp_interactions_exp/soil_moisture2.csv")
+###### Calculating sample sizes 22/08/2021 ####
+samplesizedata <- read_csv("Data/sp_interactions_exp/sample_sizes.csv")
+#samplesizes <- samplesizedata %>% group_by(Composition) %>% tally()
+#Sample sizes of droughts and control pots - allocated starting with C
+# by composition then C/D/C/D based on first two days of transpiration
+samplesizeswatering <- samplesizedata %>% group_by(Composition, C_or_D) %>% tally()
+##Updated sample sizes December 2022 ####
+onerowpot <- alldata %>% group_by(Pot_number) %>% filter(row_number()==1)
+samplesizestable <- onerowpot %>% group_by(Composition) %>% tally()
 
 ## Merging with watering treatment data
 treatmentdata <- samplesizedata %>% select(Pot_number, C_or_D)
@@ -219,3 +222,7 @@ amygdata <- alldata %>% filter(Species=="AMYG")
 oblidata <- alldata %>% filter(Species=="OBLI")
 ovatdata <- alldata %>% filter(Species=="OVAT")
 vimidata <- alldata %>% filter(Species=="VIMI")
+
+#Creating solodroughtdata for plotting because a control plant 100% died because
+#of desiccation from fan
+solodroughtdata <- solodata %>% filter(C_or_D=="D")
