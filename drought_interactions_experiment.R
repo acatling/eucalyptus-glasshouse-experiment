@@ -2,9 +2,10 @@
 ## Species interactions experiment 2021
 #Eucalyptus amygdalina, Eucalyptus obliqua, Eucalyptus ovata and Eucalyptus viminalis
 
-###Load in data and packages
+### Load in data and packages ####
 source("preparing_data.R")
 library(kableExtra)
+library(cowplot)
 ##Colours I like
 #cornflowerblue
 #thistle
@@ -227,25 +228,7 @@ ggplot(moisturelong, aes(x = date_time2, y = value, colour = probe))+
         legend.title=element_text(size=12))
 dev.off()
 
-#### Average ttm plotted against average growth rate ####
-##UPDATE THESE so that there is no error bar for obliqua
-#Calculate mean and sd ttm for D plants only
-ttmmeans <- solodata %>% filter(C_or_D == "D") %>% group_by(Species) %>% 
-  summarise(mean_tt100m = mean(tt100m, na.rm=T),
-            sd_tt100m = sd(tt100m, na.rm=T),
-            mean_tt50m = mean(tt50m, na.rm=T),
-            sd_tt50m = sd(tt50m, na.rm=T))
-#Making sd 0 for obliqua tt100m and 50m
-ttmmeans <- within(ttmmeans, sd_tt100m[Species=="OBLI"] <- 0)
-ttmmeans <- within(ttmmeans, sd_tt50m[Species=="OBLI"] <- 0)
-#Calculate mean and sd growth rates, this is predrought so C and D plants
-growthmeans <- solodata %>% group_by(Species) %>% 
-  summarise(mean_RGRpredrought = mean(RGR_predrought, na.rm=T),
-            sd_RGRpredrought = sd(RGR_predrought, na.rm=T))
-#Merge ttm and growth rates
-meandata <- left_join(growthmeans, ttmmeans)
-
-#Plot
+#### Plots average ttm and growth ####
 #mean and SE ttm 50% drought only plants
 solodata %>% filter(C_or_D=="D") %>%
 ggplot(aes(x = Species, y = tt50m))+
@@ -278,6 +261,7 @@ ggplot(ttmmeans, aes(x = Species, y = mean_tt100m))+
         axis.text.x = element_text(face = "italic"))
 
 ### change shape of mean data points and save - fixes errors bars for obli
+#### Figure 1 - ttm and growth rates of species ####
 #100 m 
 c <- ggplot() + 
   geom_jitter(data=solodroughtdata, aes(x=Species, y=tt100m), alpha=0.3, width=0.05, height=0.05) + 
@@ -311,14 +295,92 @@ a <- ggplot(solodata, aes(x = Species, y = RGR_predrought))+
         axis.text.x=element_blank())
 
 #Organise them as a three panel with common species labels
-library(gridExtra)
-#grid.arrange(grobs=c(a,b,c))
-library(cowplot)
+#using cowplot
 plot_grid(a,b,c, align="hv", ncol=1, labels = c('A)', 'B)', 'C)'), hjust=-3)
+
+#### Figure 2 - ttm against growth rate ####
+#meandata using SD
+plot(mean_tt100m ~ mean_RGRpredrought, ylab="Mean time to 100% mortality (wks)", ylim=c(0,6), xlim=c(0,30), 
+     xlab="Mean RGR pre-drought (mm/day)", tck=-0.02, pch=19, cex=1.2, bty="l", meandata)
+#add error bars
+#y axis 
+arrows(x0=meandata$mean_RGRpredrought, y0=meandata$mean_tt100m-meandata$sd_tt100m,
+       x1=meandata$mean_RGRpredrought, y1=meandata$mean_tt100m+meandata$sd_tt100m, code=3, angle=90, length=0.1)
+#x axis
+arrows(x0=meandata$mean_RGRpredrought-meandata$sd_RGRpredrought, y0=meandata$mean_tt100m,
+       x1=meandata$mean_RGRpredrought+meandata$sd_RGRpredrought, y1=meandata$mean_tt100m, code=3, angle=90, length=0.1)
+
+#mgp c(left, bottom, title) but this does the same thing to both axes
+#have to use mgp.axis.labels(x,y) to set them separately
+#mgp=c(0,3.5,0) is perfect for x
 dev.off()
-pdf("Output/panel_growth_ttm.pdf", width=21, height=21)
-#par(oma=c(12,8,3,1), mfrow=c(3,1), mar=c(1, 4, 4, 1))
-par(oma=c(1, 1, 1,1), mfrow=c(3,1), mar=c(1, 4, 4, 1))
+pdf("Output/ttm~rgr.pdf", width=21, height=21)
+par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
+#mgp.axis.labels(3.5, type='x')
+#mgp.axis.labels(100, type='y')
+#meandata using 95% CIs
+plot(mean_tt100m ~ mean_RGRpredrought, ylab="", ylim=c(0,5), xlim=c(0,22), 
+     xlab="", tck=-0.01, pch=19, cex=4, cex.axis=5, bty="n", meandata)
+box(bty="l", lwd=4)
+#add error bars
+#y axis 
+arrows(x0=meandata$mean_RGRpredrought, y0=meandata$lower_ttm100,
+       x1=meandata$mean_RGRpredrought, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+#x axis
+arrows(x0=meandata$lower_rgr, y0=meandata$mean_tt100m,
+       x1=meandata$upper_rgr, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+#Add axis labels
+mtext("Mean time to 100% mortality (weeks)", side=2, outer=T, cex=5, line=4)
+mtext("Mean RGR pre-drought (mm/day)", side=1, outer=T, cex=5, line=5)
+dev.off()
+#### Figure 3 - watered growth rates alone or with cons or hets ####
+ggplot(rgr_alone_four, aes(x = Composition, y = RGR_predrought))+
+  geom_jitter(alpha=0.4, width=0.05)+
+  theme_classic()+
+  facet_wrap(~Species)
+#Plotted as mean and sd
+boxplot(mean_rgr_comp ~ Composition, ylab="blah", ylim=c(0,20),
+     xlab="yes", tck=-0.02, pch=19, cex=1.2, bty="l", alone_cons_rgr)
+###Using base R so I need to assign dummy x values to distribute along x axis
+#alone_cons_rgr$x <- c(0.5, 1, 2, 2.5, 3.5, 4)
+#plot(mean_rgr_comp ~ x, ylab="blah", ylim=c(0,20),
+#     xlab="yes", tck=-0.02, pch=19, cex=1.2, bty="l", alone_cons_rgr)
+
+#Reordering Composition
+pot_rgr_cons$Composition <- factor(pot_rgr_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
+comp_rgr_cons$Composition <- factor(comp_rgr_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
+##
+a <- ggplot() + 
+  geom_jitter(data=pot_rgr_cons, aes(x=Composition, y=sqrt(mean_pot_rgr_predrought)), alpha=0.3, width=0.05, height=0.05) + 
+  geom_point(data=comp_rgr_cons, aes(x=Composition, y=sqrt(mean_rgr_comp)), cex=2)+
+  geom_errorbar(data=comp_rgr_cons, aes(x=Composition, ymin = sqrt(lower_rgr_comp), ymax = sqrt(upper_rgr_comp), width = 0.15), cex=1)+
+  ylab("sqrt(RGR pre-drought (mm/day))")+
+  ylim(-0.1,7)+
+  theme_classic()+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14))
+#Note that one of the 0 RGRs for ovat-c pot 8 is legitimate, stopped growing
+#Reordering Composition:Species
+pot_rgr_cons$Composition <- factor(pot_rgr_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
+comp_rgr_cons$Composition <- factor(comp_rgr_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
+
+#growth rate
+b <- ggplot() + 
+  geom_jitter(data=pot_rgr_hets, aes(x=compspecies, y=sqrt(mean_pot_rgr_predrought)), alpha=0.3, width=0.05, height=0.05) + 
+  geom_point(data=comp_rgr_hets, aes(x=compspecies, y=sqrt(mean_rgr_comp)), cex=2)+
+  geom_errorbar(data=comp_rgr_hets, aes(x=compspecies, ymin = sqrt(lower_rgr_comp), ymax = sqrt(upper_rgr_comp), width = 0.15), cex=1)+
+  ylab("sqrt(RGR pre-drought (mm/day))")+
+  ylim(-0.1,7)+
+  xlab("Composition_Species")+
+  theme_classic()+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14))
+
+#Plot together
+plot_grid(a,b, align="hv", ncol=1, labels = c('A)', 'B)'), hjust=-3)
+
+#### Supp figure - Fig 3 but for OBLI B, BB, AB, BC, BD ####
+#Do this*
 
 #### Layout script ####
 #Want to randomly assign numbers to treatments for layout
