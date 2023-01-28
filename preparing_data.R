@@ -201,7 +201,7 @@ ttmdata <- alldatalong %>% select(plantid, tt100m, tt50m) %>%
 alldata <- left_join(alldata, ttmdata)
 
 ### Calculate relative growth rate
-# Final height - initial height / time, in cm per day
+# Final height - initial height / time, in mm per day
 #Final height: 21/10/2022. Initial height: 19/07. # 02/09 is the start of the drought treatment
 #02/09 - 21/10 is 49 days.
 #19/07 - 21/10 is 63 days
@@ -250,6 +250,7 @@ vimidata <- alldata %>% filter(Species=="VIMI")
 #Creating solodroughtdata for plotting because a control plant 100% died because
 #of desiccation from fan
 solodroughtdata <- solodata %>% filter(C_or_D=="D")
+solowatereddata <- solodata %>% filter(C_or_D=="C")
 
 #### Calculate mean and sd ttm for D plants only ####
 #same sample sizes for ttm100 and ttm50

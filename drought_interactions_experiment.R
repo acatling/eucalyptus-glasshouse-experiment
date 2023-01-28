@@ -6,6 +6,10 @@
 source("preparing_data.R")
 library(kableExtra)
 library(cowplot)
+library(lme4)
+library(lmerTest)
+library(DHARMa)
+library(MuMIn)
 ##Colours I like
 #cornflowerblue
 #thistle
@@ -42,11 +46,31 @@ alldatalong %>% filter(!(Species == '?')) %>%
   ylim(-15,115)+
   facet_wrap(~Species)
 
+## Stats - mortality model ####
+hist(solodroughtdata$tt100m)
+hist(solodroughtdata$tt50m)
+
+mort50mod <- lm(tt50m ~ Species, solodroughtdata)
+summary(mort50mod)
+mortdharm <- simulateResiduals(mort50mod)
+plot(mortdharm)
+r.squaredGLMM(mort50mod)
+
+mort100mod <- lm(tt100m ~ Species, solodroughtdata)
+summary(mort100mod)
+mortdharm <- simulateResiduals(mort100mod)
+plot(mortdharm)
+r.squaredGLMM(mort100mod)
+
+solodroughtdata$Species <- factor(solodroughtdata$Species, levels = c("VIMI", "AMYG", "OBLI", "OVAT"))
+solodroughtdata$Species <- factor(solodroughtdata$Species, levels = c("AMYG", "OBLI", "OVAT", "VIMI"))
+
+
 ## Growth rate ####
-alldata %>% filter(!(Species == '?')) %>%
-  ggplot(aes(x = Species, y = RGR_duringdrought, colour = C_or_D))+
+solodata %>% filter(!(Species == '?')) %>%
+  ggplot(aes(x = Species, y = sqrt(RGR_duringdrought), colour = C_or_D))+
   geom_boxplot()+
-  geom_jitter()+
+  geom_jitter(width=0.05, height=0.05)+
   theme_classic()
 #14 days
 alldata %>% filter(!(Species == '?')) %>%
@@ -177,6 +201,52 @@ ggplot(solodata, aes(x = Species, y = RGR_predrought))+
 
 #Check this pot - is it amyg or vimi? 100 
 test <- alldata %>% filter(Species=="AMYG" & Composition == "VIMI-D")
+
+## Stats - growth rate model ####
+#Two weeks before drought
+growthmod <- lm(sqrt(RGR_predrought) ~ Species, solodata)
+summary(growthmod)
+growthdharm <- simulateResiduals(growthmod)
+plot(growthdharm)
+r.squaredGLMM(growthmod)
+solodata$Species <- factor(solodata$Species, levels = c("AMYG", "OBLI", "OVAT", "VIMI"))
+
+ggplot(solodata, aes(x = Species, y = sqrt(RGR_predrought)))+
+  geom_boxplot()+
+  geom_jitter(alpha = 0.4, width=0.05)+
+  theme_classic()
+#Over the drought period (seven weeks)
+growthmod2 <- lm(sqrt(RGR_duringdrought) ~ Species + C_or_D, solodata)
+summary(growthmod2)
+growthdharm2 <- simulateResiduals(growthmod2)
+plot(growthdharm2)
+r.squaredGLMM(growthmod2)
+
+growthmod2 <- lmer(sqrt(RGR_duringdrought) ~ C_or_D + (1|Species), solodata)
+summary(growthmod2)
+growthdharm2 <- simulateResiduals(growthmod2)
+plot(growthdharm2)
+r.squaredGLMM(growthmod2)
+
+growthmod3 <- lm(sqrt(RGR_duringdrought) ~ Species, solowatereddata)
+summary(growthmod3)
+growthdharm2 <- simulateResiduals(growthmod2)
+plot(growthdharm2)
+r.squaredGLMM(growthmod2)
+
+#units mm/day
+solodata %>% filter(!(Species == '?')) %>%
+  ggplot(aes(x = Species, y = sqrt(RGR_duringdrought), colour = C_or_D))+
+  geom_boxplot()+
+  geom_jitter(width=0.05, height=0.05)+
+  theme_classic()
+## Stats - trade-off between drought tolerance and growth rate ####
+#regression
+tradeoff <- lm(tt100m ~ sqrt(RGR_predrought) + Species, solodroughtdata)
+summary(tradeoff)
+growthdharm <- simulateResiduals(growthmod)
+plot(growthdharm)
+r.squaredGLMM(growthmod)
 
 #### Table of sample sizes ####
 
@@ -334,7 +404,7 @@ mtext("Mean time to 100% mortality (weeks)", side=2, outer=T, cex=5, line=4)
 mtext("Mean RGR pre-drought (mm/day)", side=1, outer=T, cex=5, line=5)
 dev.off()
 #### Figure 3 - watered growth rates alone or with cons or hets ####
-ggplot(rgr_alone_four, aes(x = Composition, y = RGR_predrought))+
+ggplot(pot_rgr_cons, aes(x = Composition, y = mean_pot_rgr_predrought))+
   geom_jitter(alpha=0.4, width=0.05)+
   theme_classic()+
   facet_wrap(~Species)
@@ -382,6 +452,37 @@ plot_grid(a,b, align="hv", ncol=1, labels = c('A)', 'B)'), hjust=-3)
 #### Supp figure - Fig 3 but for OBLI B, BB, AB, BC, BD ####
 #Do this*
 
+## Stats - growth rate by composition ####
+#By species, pot as a random effect, alone_or_four is for e.g. A or AAAA only
+amygcompdata <- alone_or_four %>% filter(Species=="AMYG")
+#Reorder levels so alone is the reference
+#amyg
+amygcompdata$Composition <- factor(amygcompdata$Composition, levels = c("AMYG-A", "AAAA", "AACC", "AADD"))
+amygcompmod <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), amygcompdata)
+summary(amygcompmod)
+dharm <- simulateResiduals(amygcompmod)
+plot(dharm)
+r.squaredGLMM(amygcompmod)
+#ovat
+ovatcompdata <- alone_or_four %>% filter(Species=="OVAT")
+ovatcompdata$Composition <- factor(ovatcompdata$Composition, levels = c("OVAT-C", "CCCC", "AACC", "CCDD"))
+ovatcompmod <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), ovatcompdata)
+summary(ovatcompmod)
+dharm <- simulateResiduals(ovatcompmod)
+plot(dharm)
+r.squaredGLMM(ovatcompmod)
+#vimi
+vimicompdata <- alone_or_four %>% filter(Species=="VIMI")
+vimicompdata$Composition <- factor(vimicompdata$Composition, levels = c("VIMI-D", "DDDD", "AADD", "CCDD"))
+vimicompmod <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), vimicompdata)
+summary(vimicompmod)
+dharm <- simulateResiduals(vimicompmod)
+plot(dharm)
+r.squaredGLMM(vimicompmod)
+### Stats table Fig 3 by species ####
+
+#### Fig 3 as a coef plot ####
+#do this*
 #### Layout script ####
 #Want to randomly assign numbers to treatments for layout
 #Importing dataframe with designs listed
