@@ -218,7 +218,10 @@ alldata <- alldata %>% group_by(plantid) %>%
 # So changing negative relative growth rates to zero
 #BUT some issues with data entry for these plants, to resolve*
 #Initial and final heights strange:
-#test <- alldata %>% filter(RGR_overall<0)
+test <- alldata %>% filter(RGR_overall<0)
+#pot 8 and 47 and 102 - okay, variation in measuring height.
+#pot 52 - fixed issue, one plant (2) didn't have initial height recorded.
+#fixed order for 92 and 95, fixed 116-2 - typo from 21 to 210
 
 alldata <- within(alldata, RGR_duringdrought[RGR_duringdrought<0] <- '0')
 alldata <- within(alldata, RGR_overall[RGR_overall<0] <- '0')
@@ -252,7 +255,7 @@ vimidata <- alldata %>% filter(Species=="VIMI")
 solodroughtdata <- solodata %>% filter(C_or_D=="D")
 solowatereddata <- solodata %>% filter(C_or_D=="C")
 
-#### Calculate mean and sd ttm for D plants only ####
+#### Calculate mean and sd ttm for drought plants only ####
 #same sample sizes for ttm100 and ttm50
 ttmmeans <- solodata %>% filter(C_or_D == "D") %>% group_by(Species) %>% 
   summarise(mean_tt100m = mean(tt100m, na.rm=T),
@@ -340,4 +343,33 @@ pot_rgr_hets <- alone_four_avg_pot %>% filter(Composition == "AACC" | Compositio
                                               | Composition == "CCDD")
 comp_rgr_hets <- comprgrmeans %>% filter(Composition == "AACC" | Composition == "AADD" 
                                               | Composition == "CCDD")
-
+## Calculating pre-drought growth rates for OBLI, only 2 plants in cons and hets
+obli_comp <- alldata %>% filter(Composition == "OBLI-B" | Composition == "BB" 
+                                    | Composition == "AB" | Composition == "BC" | Composition == "BD")
+obli_comp_avg <- obli_comp %>% group_by(Pot_number, Species) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+#Add in composition info
+obli_comp_avg <- left_join(obli_comp_avg, compositions)  
+obli_comp_avg <- obli_comp_avg %>%
+  select(Pot_number, Species, Composition, mean_pot_rgr_predrought = RGR_predrought)
+#summarise means
+oblicomprgrmeans <- obli_comp_avg %>% group_by(Composition, Species) %>% 
+  summarise(mean_rgr_comp = mean(mean_pot_rgr_predrought, na.rm=T),
+            sd_rgr_comp = sd(mean_pot_rgr_predrought, na.rm=T),
+            n_rgr_comp = n())
+#Calculate upper and lower confidence intervals
+oblicomprgrmeans <- oblicomprgrmeans %>% mutate(upper_rgr_comp = (mean_rgr_comp + qnorm(0.75) * sd_rgr_comp/sqrt(n_rgr_comp)),
+                                        lower_rgr_comp = (mean_rgr_comp - qnorm(0.75) * sd_rgr_comp/sqrt(n_rgr_comp)))
+#unite
+oblicomprgrmeans <- oblicomprgrmeans %>% unite("compspecies", Composition:Species, remove = FALSE)
+obli_comp_avg <- obli_comp_avg %>% unite("compspecies", Composition:Species, remove = FALSE)
+# Stats for obli - want grouped alone, cons and hets
+obli_comp_avg$grouped_comp <- 1
+obli_comp_avg <- within(obli_comp_avg, grouped_comp[Composition == "OBLI-B"] <- 'alone')
+obli_comp_avg <- within(obli_comp_avg, grouped_comp[Composition == "BB"] <- 'cons')
+obli_comp_avg <- within(obli_comp_avg, grouped_comp[Composition != "OBLI-B" & Composition != "BB"] <- 'hets')
+#Do it for obli_comp too, for models
+obli_comp$grouped_comp <- 1
+obli_comp <- within(obli_comp, grouped_comp[Composition == "OBLI-B"] <- 'alone')
+obli_comp <- within(obli_comp, grouped_comp[Composition == "BB"] <- 'cons')
+obli_comp <- within(obli_comp, grouped_comp[Composition != "OBLI-B" & Composition != "BB"] <- 'hets')

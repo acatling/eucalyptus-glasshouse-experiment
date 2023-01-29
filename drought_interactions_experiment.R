@@ -10,6 +10,7 @@ library(lme4)
 library(lmerTest)
 library(DHARMa)
 library(MuMIn)
+library(sjPlot)
 ##Colours I like
 #cornflowerblue
 #thistle
@@ -353,11 +354,11 @@ b <- ggplot() +
         axis.title.x=element_blank(),
         axis.text.x=element_blank())
 #growth rate
-a <- ggplot(solodata, aes(x = Species, y = RGR_predrought))+
+a <- ggplot(solodata, aes(x = Species, y = sqrt(RGR_predrought)))+
   geom_jitter(alpha=0.2, width=0.05)+
   geom_point(stat="summary", fun.y="mean_se",size=2) +
   geom_errorbar(stat="summary", fun.data="mean_se",width=0.15,size=1)+
-  ylab("RGR (mm/day)")+
+  ylab("RGR pre-drought(mm/day)")+
   theme_classic()+
   theme(axis.text=element_text(size=12), 
         axis.title=element_text(size=12),
@@ -366,7 +367,35 @@ a <- ggplot(solodata, aes(x = Species, y = RGR_predrought))+
 
 #Organise them as a three panel with common species labels
 #using cowplot
-plot_grid(a,b,c, align="hv", ncol=1, labels = c('A)', 'B)', 'C)'), hjust=-3)
+cowplot::plot_grid(a,b,c, align="hv", ncol=1, labels = c('A)', 'B)', 'C)'), hjust=-3)
+
+#as boxplots instead:
+a <- ggplot(solodata, aes(x = Species, y = sqrt(RGR_predrought)))+
+  geom_boxplot(cex=0.6, outlier.size=2.5) + 
+  geom_jitter(alpha=0.2, width=0.05)+
+  ylab("sqrt(RGR (mm/day))")+
+  theme_classic()+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank())
+b <- ggplot(solodroughtdata, aes(x=Species, y=tt50m)) + 
+  geom_boxplot(cex=0.6, outlier.size=2.5) + 
+  geom_jitter(alpha=0.3, width=0.05, height=0.05) + 
+  ylab("Time to 50% mort. (wks)")+
+  theme_classic()+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank())
+c <- ggplot(solodroughtdata, aes(x=Species, y=tt100m)) + 
+  geom_boxplot(cex=0.6, outlier.size=2.5) + 
+  geom_jitter(data=, alpha=0.3, width=0.05, height=0.05) + 
+  ylab("Time to 100% mort. (wks)")+
+  theme_classic()+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14))
+cowplot::plot_grid(a,b,c, align="hv", ncol=1, labels = c('A)', 'B)', 'C)'), hjust=-3.2)
 
 #### Figure 2 - ttm against growth rate ####
 #meandata using SD
@@ -389,19 +418,39 @@ par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
 #mgp.axis.labels(3.5, type='x')
 #mgp.axis.labels(100, type='y')
 #meandata using 95% CIs
-plot(mean_tt100m ~ mean_RGRpredrought, ylab="", ylim=c(0,5), xlim=c(0,22), 
+#colour by species
+#sqrt RGR* do this
+#plot(meandata$mean_tt100m, meandata$mean_RGRpredrought, col=as.factor(meandata$Species))
+#both of these work:
+#col=c('red', 'blue', 'green', 'purple')[as.factor(meandata$Species)]
+#col=as.factor(meandata$Species)
+#col=as.factor(Species)
+#col= alpha("lightgrey",0.6)
+
+#cols <- c("red", "blue", "darkgreen", "purple")
+plot(mean_tt100m ~ sqrt(mean_RGRpredrought), col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,5), xlim=c(0,5), 
      xlab="", tck=-0.01, pch=19, cex=4, cex.axis=5, bty="n", meandata)
-box(bty="l", lwd=4)
-#add error bars
-#y axis 
-arrows(x0=meandata$mean_RGRpredrought, y0=meandata$lower_ttm100,
-       x1=meandata$mean_RGRpredrought, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
-#x axis
-arrows(x0=meandata$lower_rgr, y0=meandata$mean_tt100m,
-       x1=meandata$upper_rgr, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
 #Add axis labels
 mtext("Mean time to 100% mortality (weeks)", side=2, outer=T, cex=5, line=4)
-mtext("Mean RGR pre-drought (mm/day)", side=1, outer=T, cex=5, line=5)
+mtext("sqrt(Mean RGR pre-drought (mm/day))", side=1, outer=T, cex=5, line=5)
+#add error bars
+#y axis 
+arrows(x0=sqrt(meandata$mean_RGRpredrought), y0=meandata$lower_ttm100,
+       x1=sqrt(meandata$mean_RGRpredrought), y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+#x axis
+arrows(x0=sqrt(meandata$lower_rgr), y0=meandata$mean_tt100m,
+       x1=sqrt(meandata$upper_rgr), y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+box(bty="l", lwd=4)
+points(mean_tt100m ~ sqrt(mean_RGRpredrought), pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+#add legend
+legend("bottomleft", inset = 0.05, title = "Species", unique(meandata$Species), pch=19, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 4)
+#add points underneath, jittered and coloured by species
+#Doesn't make sense to have points underneath, that isn't how the data work
+#points(jitter(tt100m, amount = 0.1) ~ jitter(sqrt(RGR_predrought), amount = 0.1), 
+#       col=alpha(c('red', 'blue', 'green', 'purple')[as.factor(meandata$Species)], 0.3), pch = 19, cex = 3, solodroughtdata)
 dev.off()
 #### Figure 3 - watered growth rates alone or with cons or hets ####
 ggplot(pot_rgr_cons, aes(x = Composition, y = mean_pot_rgr_predrought))+
@@ -433,7 +482,6 @@ a <- ggplot() +
 #Reordering Composition:Species
 pot_rgr_cons$Composition <- factor(pot_rgr_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
 comp_rgr_cons$Composition <- factor(comp_rgr_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
-
 #growth rate
 b <- ggplot() + 
   geom_jitter(data=pot_rgr_hets, aes(x=compspecies, y=sqrt(mean_pot_rgr_predrought)), alpha=0.3, width=0.05, height=0.05) + 
@@ -445,12 +493,60 @@ b <- ggplot() +
   theme_classic()+
   theme(axis.text=element_text(size=14), 
         axis.title=element_text(size=14))
-
 #Plot together
-plot_grid(a,b, align="hv", ncol=1, labels = c('A)', 'B)'), hjust=-3)
+cowplot::plot_grid(a,b, align="hv", ncol=1, labels = c('A)', 'B)'), hjust=-3)
+### as boxplots instead ###
+a <- ggplot() + 
+  geom_boxplot(data=pot_rgr_cons, aes(x=Composition, y=sqrt(mean_pot_rgr_predrought)), cex=0.6, outlier.size=2.5) + 
+  geom_jitter(data=pot_rgr_cons, aes(x=Composition, y=sqrt(mean_pot_rgr_predrought)), alpha=0.2, cex=1.5, width=0.05) + 
+  ylab("sqrt(RGR pre-drought (mm/day))")+
+  ylim(-0.1,7)+
+  theme_classic()+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14))
+#growth rate
+b <- ggplot() + 
+  geom_boxplot(data=pot_rgr_hets, aes(x=compspecies, y=sqrt(mean_pot_rgr_predrought)), cex=0.6, outlier.size=2.5) + 
+  geom_jitter(data=pot_rgr_hets, aes(x=compspecies, y=sqrt(mean_pot_rgr_predrought)), alpha=0.3, width=0.05, height=0.05) + 
+  ylab("sqrt(RGR pre-drought (mm/day))")+
+  ylim(-0.1,7)+
+  xlab("Composition_Species")+
+  theme_classic()+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14))
+cowplot::plot_grid(a,b, align="hv", ncol=1, labels = c('A)', 'B)'), hjust=-3)
 
 #### Supp figure - Fig 3 but for OBLI B, BB, AB, BC, BD ####
-#Do this*
+obli_comp_avg <- within(obli_comp_avg, compspecies[compspecies=="OBLI-B_OBLI"] <- 'OBLI-B')
+obli_comp_avg <- within(obli_comp_avg, compspecies[compspecies=="BB_OBLI"] <- 'BB')
+oblicomprgrmeans <- within(oblicomprgrmeans, compspecies[compspecies=="OBLI-B_OBLI"] <- 'OBLI-B')
+oblicomprgrmeans <- within(oblicomprgrmeans, compspecies[compspecies=="BB_OBLI"] <- 'BB')
+
+oblicomprgrmeans$compspecies <- factor(oblicomprgrmeans$compspecies, level = c("OBLI-B", 
+                                          "BB", "AB_OBLI", "AB_AMYG", "BC_OBLI", "BC_OVAT",
+                                          "BD_OBLI", "BD_VIMI"))
+obli_comp_avg$compspecies <- factor(obli_comp_avg$compspecies, 
+                                    level = c("OBLI-B", 
+                  "BB", "AB_OBLI", "AB_AMYG", "BC_OBLI", "BC_OVAT",
+                  "BD_OBLI", "BD_VIMI"))
+#means with CIs
+ggplot() + 
+  geom_jitter(data=obli_comp_avg, aes(x=compspecies, y=sqrt(mean_pot_rgr_predrought)), alpha=0.3, width=0.05, height=0.05) + 
+  geom_point(data=oblicomprgrmeans, aes(x=compspecies, y=sqrt(mean_rgr_comp)), cex=2)+
+  geom_errorbar(data=oblicomprgrmeans, aes(x=compspecies, ymin = sqrt(lower_rgr_comp), ymax = sqrt(upper_rgr_comp), width = 0.15), cex=1)+
+  ylab("sqrt(RGR pre-drought (mm/day))")+
+  #ylim(-0.1,7)+
+  theme_classic()
+#boxplot
+ggplot() + 
+  geom_boxplot(data=obli_comp_avg, aes(x=compspecies, y=sqrt(mean_pot_rgr_predrought)), outlier.size=3)+
+  geom_point(data=obli_comp_avg, aes(x=compspecies, y=sqrt(mean_pot_rgr_predrought)), alpha=0.3, cex = 3) + 
+  ylab("sqrt(RGR pre-drought (mm/day))")+
+  ylim(-0.1,7)+
+  xlab("Composition_Species")+
+  theme_classic()+
+  theme(axis.text=element_text(size=16), 
+        axis.title=element_text(size=16))
 
 ## Stats - growth rate by composition ####
 #By species, pot as a random effect, alone_or_four is for e.g. A or AAAA only
@@ -463,6 +559,17 @@ summary(amygcompmod)
 dharm <- simulateResiduals(amygcompmod)
 plot(dharm)
 r.squaredGLMM(amygcompmod)
+##obli
+obli_comp$Composition <- factor(obli_comp$Composition, levels = c("OBLI-B", "BB", "AB", "BC", "BD"))
+oblicompmod <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), obli_comp)
+summary(oblicompmod)
+#grouped hets
+oblicompmod2 <- lmer(sqrt(RGR_predrought) ~ grouped_comp + (1|Pot_number), obli_comp)
+summary(oblicompmod2)
+dharm <- simulateResiduals(oblicompmod2)
+plot(dharm)
+r.squaredGLMM(oblicompmod2)
+tab_model(oblicompmod2)
 #ovat
 ovatcompdata <- alone_or_four %>% filter(Species=="OVAT")
 ovatcompdata$Composition <- factor(ovatcompdata$Composition, levels = c("OVAT-C", "CCCC", "AACC", "CCDD"))
@@ -479,7 +586,106 @@ summary(vimicompmod)
 dharm <- simulateResiduals(vimicompmod)
 plot(dharm)
 r.squaredGLMM(vimicompmod)
+
+### Coef plot of growth rates alone or with cons or hets
+#recall that labels are inverted
+specieslist <- c("AMYG", "OVAT", "VIMI")
+growthmods <- c(amygcompmod, ovatcompmod, vimicompmod)
+#Making coefficient plot for survival as a function of environment
+plot_models(growthmods, transform = NULL, vline.color = "grey", legend.title = "Species",
+            dot.size = 2, line.size = 1)+
+  ylab("Estimate")+
+  theme_classic()+
+  scale_colour_discrete(labels = c("VIMI", "OVAT", "AMYG"))
+
+###with obli too
+#need to rework amyg/ovat/vimi models to include AB, BC and BD responses
+amygcompdata2 <- alldata %>% filter(Species == "AMYG")
+amygcompdata2$Composition <- factor(amygcompdata2$Composition, levels = c("AMYG-A", "AAAA", "AB", "AACC", "AADD"))
+amygcompmod2 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), amygcompdata2)
+summary(amygcompmod2)
+ovatcompdata2 <- alldata %>% filter(Species == "OVAT")
+ovatcompdata2$Composition <- factor(ovatcompdata2$Composition, levels = c("OVAT-C", "CCCC", "BC", "AACC", "CCDD"))
+ovatcompmod2 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), ovatcompdata2)
+summary(ovatcompmod2)
+vimicompdata2 <- alldata %>% filter(Species == "VIMI")
+vimicompdata2$Composition <- factor(vimicompdata2$Composition, levels = c("VIMI-D", "DDDD", "AADD", "BD", "CCDD"))
+vimicompmod2 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), vimicompdata2)
+summary(vimicompmod2)
+
+specieslist2 <- c("AMYG", "OBLI", "OVAT", "VIMI")
+growthmods2 <- c(amygcompmod2, oblicompmod, ovatcompmod2, vimicompmod2)
+plot_models(growthmods2, transform = NULL, vline.color = "grey", legend.title = "Species",
+            dot.size = 2, line.size = 1)+
+  ylab("Estimate")+
+  theme_classic()+
+  scale_colour_discrete(labels = c("VIMI", "OVAT", "OBLI", "AMYG"))
 ### Stats table Fig 3 by species ####
+#sJplot
+#Doesn't work - lose negative sign, not sure how to avoid this
+#myfun <- function(x) x^2
+#tab_model(amygcompmod, ovatcompmod, vimicompmod, transform = "myfun")
+tab_model(amygcompmod, ovatcompmod, vimicompmod, transform = NULL)
+
+## Extracting values for all in a loop
+model_list <- list(amygcompmod, ovatcompmod, vimicompmod)
+effects = lapply(1:length(model_list), function(x) {
+  as.data.frame(coef(summary(model_list[[x]]))) %>% mutate(Species=paste0(x))})
+effects_table <- do.call("rbind", effects)
+
+#Make rownames a column 
+effects_table <- cbind(Effect = rownames(effects_table), effects_table)
+#Remove rownames
+rownames(effects_table) <- NULL
+
+#Renaming effects since loop adding values to ends
+effects_table$Effect[startsWith(effects_table$Effect, '(Intercept)')] <- 'Intercept'
+effects_table$Effect[startsWith(effects_table$Effect, 'CompositionAACC')] <- 'AACC'
+effects_table$Effect[startsWith(effects_table$Effect, 'CompositionAADD')] <- 'AADD'
+effects_table$Effect[startsWith(effects_table$Effect, 'CompositionCCDD')] <- 'CCDD'
+effects_table$Effect[startsWith(effects_table$Effect, 'CompositionAAAA')] <- 'AAAA'
+effects_table$Effect[startsWith(effects_table$Effect, 'CompositionCCCC')] <- 'CCCC'
+effects_table$Effect[startsWith(effects_table$Effect, 'CompositionDDDD')] <- 'DDDD'
+
+effects_table <- within(effects_table, Species[Species == '1'] <- 'E. amygdalina')
+effects_table <- within(effects_table, Species[Species == '2'] <- 'E. ovata')
+effects_table <- within(effects_table, Species[Species == '3'] <- 'E. viminalis')
+#Renaming columns
+effects_table <- effects_table %>% select(Species, Effect, Estimate, 'SE' = 'Std. Error', 'p_value' = 'Pr(>|t|)')
+
+#Making column with Estimate (+/- SE) and p value asterisks all combined
+#effects_table$collated <- sprintf("%1.1f ± %1.1f", effects_table$Estimate, effects_table$SE)
+
+#Add column for asterisks based on below function
+effects_table <- effects_table %>% mutate(p_asterisks = case_when(p_value >=0.05~"",
+                                                                  p_value <0.001~"***",
+                                                                  p_value <0.01~"**",
+                                                                  p_value <0.05~"*"))
+effects_table$collated <- sprintf("%1.3f ± %1.2f%s", effects_table$Estimate, effects_table$SE, effects_table$p_asterisks)
+
+growth_effects_kbl <- effects_table %>% select(Species, Effect, collated)
+
+# #This made the table wider but some of the column aren't shared here so many NAs
+# growth_effects_kbl <- growth_effects_kbl %>% group_by(Species) %>% mutate(row = row_number()) %>%
+#   pivot_wider(names_from = Species, values_from = collated) %>% select(-row)
+
+#Want to include RE info too
+#Split out each sp
+amygtable <- growth_effects_kbl %>% filter(Species == "E. amygdalina") %>% select(Effect, collated)
+#wider
+amyg_kbl <- amygtable %>% pivot_wider(names_from = Effect, values_from = collated)
+#Plotting with kableR
+#Marginal r squareds from below table
+#caption: <b>Table 2</b>. Model output with Estimate ± SE (standard error) for each species modelled separately. Marginal R-squared values reported. NCI is neighbourhood crowding index from all neighbours.
+# Mean MD is long-term mean moisture deficit summed over the growth period. MD anomaly is the difference between mean MD and observed MD. Preceding DBH is the size of each focal stem at the start of each growth period.
+# Low values of PC1 represent low soil fertility and conductivity.
+growth_effects_kbl %>% mutate(Effect = c("Intercept", "Total NCI", "Mean MD", "MD anomaly", "Preceding DBH", "PC1", "Total NCI:Mean MD", "Total NCI:Preceding DBH", "Mean MD:Preceding DBH", "test", "testing", "Tests")) %>%
+  kbl(align = 'lcccc', caption = "") %>%
+ # add_header_above(c(" "=1, "R^2=0.20"=1, "R^2=0.21"=1, "R^2=0.25"=1, "R^2=0.19"=1), align = c("l", "c", "c", "c", "c")) %>%
+  kable_classic(full_width = T, html_font = "Times", font_size = 12) %>%
+  kable_styling(font_size = 14) %>%
+ # row_spec(0, italic = T) %>%
+  footnote(general = "Continuous predictors are scaled to a mean of 0. Mean MD is 308.8 mm per growth period. Mean MD anomaly is -336.6 mm per growth period. Mean preceding DBH is 368.2 mm.", general_title="")
 
 #### Fig 3 as a coef plot ####
 #do this*
