@@ -283,6 +283,46 @@ meandata <- meandata %>% mutate(upper_ttm100 = (mean_tt100m + qnorm(0.75) * sd_t
                                 lower_ttm100 = (mean_tt100m - qnorm(0.75) * sd_tt100m/sqrt(n_ttm)),
                                 upper_rgr = (mean_RGRpredrought + qnorm(0.75) * sd_RGRpredrought/sqrt(n_rgr)),
                                 lower_rgr = (mean_RGRpredrought - qnorm(0.75) * sd_RGRpredrought/sqrt(n_rgr)))
+### TTM by composition ####
+ttmcompfour <- alldata %>% filter(C_or_D=="D") %>% filter(Composition == "AMYG-A" | Composition == "OVAT-C" 
+                                                      | Composition == "VIMI-D"
+                                                      | Composition == "AAAA" | Composition == "CCCC"
+                                                      | Composition ==  "DDDD" | Composition == "AACC"
+                                                      | Composition == "AADD" | Composition == "CCDD") %>%
+  group_by(Pot_number, Species) %>%
+  summarise(potmean_tt100m = mean(tt100m, na.rm = TRUE),
+            potmean_tt50m = mean(tt50m, na.rm = TRUE))
+compositions <- as.data.frame(alldata) %>% select(Pot_number, Composition, C_or_D) %>%
+  group_by(Pot_number) %>% filter(row_number() == 1)
+#Join with compositions info
+ttmcompfour <- left_join(ttmcompfour, compositions)  
+#Rearrange
+ttmcompfour <- ttmcompfour %>% select(Pot_number, Composition, Species, potmean_tt100m)
+#Summarising means and sds
+ttmcompfourmeans <- ttmcompfour %>% group_by(Composition, Species) %>% 
+  summarise(mean_tt100m = mean(potmean_tt100m, na.rm=T),
+            sd_tt100m = sd(potmean_tt100m, na.rm=T),
+            n_tt100m = n())
+#Calculate upper and lower confidence intervals
+ttmcompfourmeans <- ttmcompfourmeans %>% mutate(upper_tt100m = (mean_tt100m + qnorm(0.75) * sd_tt100m/sqrt(n_tt100m)),
+                                        lower_tt100m = (mean_tt100m - qnorm(0.75) * sd_tt100m/sqrt(n_tt100m)))
+#Want AACC from the perspective of A and C so using unite to give these unique row name
+ttmcompfourmeans <- ttmcompfourmeans %>% unite("compspecies", Composition:Species, remove = FALSE)
+ttmcompfour <- ttmcompfour %>% unite("compspecies", Composition:Species, remove = FALSE)
+
+#Alone and cons only
+pot_ttm_cons <- ttmcompfour %>% filter(Composition == "AMYG-A" | Composition == "OVAT-C" 
+                                              | Composition == "VIMI-D" | Composition == "AAAA"
+                                              | Composition == "CCCC" | Composition == "DDDD")
+mean_ttm_cons <- ttmcompfourmeans %>% filter(Composition == "AMYG-A" | Composition == "OVAT-C" 
+                                         | Composition == "VIMI-D" | Composition == "AAAA"
+                                         | Composition == "CCCC" | Composition == "DDDD")
+#Same thing but for competition/hets pots only
+pot_ttm_hets <- ttmcompfour %>% filter(Composition == "AACC" | Composition == "AADD" 
+                                              | Composition == "CCDD")
+mean_ttm_hets <- ttmcompfourmeans %>% filter(Composition == "AACC" | Composition == "AADD" 
+                                         | Composition == "CCDD")
+
 ### Calculate growth rates for well-watered control plants alone, with cons or hets ####
 wateredmeans <- alldata %>% filter(C_or_D=="C") %>% group_by(Species, Composition) %>% 
   summarise(mean_RGRoverall = mean(RGR_overall, na.rm=T),
@@ -317,7 +357,6 @@ alone_four_avg_pot <- left_join(alone_four_avg_pot, compositions)
 #Extracting data for RGR overall for all pots, pre-drought
 alone_four_avg_pot <- alone_four_avg_pot %>%
   select(Pot_number, Species, Composition, mean_pot_rgr_predrought = RGR_predrought)
-#Need long format with cons or hets as a column*
 
 #Summarising means and sds for plants pre-drought
 comprgrmeans <- alone_four_avg_pot %>% group_by(Composition, Species) %>% 
@@ -373,3 +412,84 @@ obli_comp$grouped_comp <- 1
 obli_comp <- within(obli_comp, grouped_comp[Composition == "OBLI-B"] <- 'alone')
 obli_comp <- within(obli_comp, grouped_comp[Composition == "BB"] <- 'cons')
 obli_comp <- within(obli_comp, grouped_comp[Composition != "OBLI-B" & Composition != "BB"] <- 'hets')
+
+#### Import trait data ####
+rawtraitspartone <- read_csv("Data/sp_interactions_exp/trait_data_sp_int_exp_part_one.csv")
+rawtraitsparttwo <- read_csv("Data/sp_interactions_exp/trait_data_sp_int_exp_part_two.csv")
+#all are control well-watered plants
+
+#Join dataframes, adding two to one
+traitdata <- left_join(rawtraitspartone, rawtraitsparttwo, by = c("Pot_number", "Composition"))
+
+#pot 120 fresh_mass_FE was recorded in mg, others in grams, adjusting
+traitdata <- within(traitdata, Fresh_mass_FE[Pot_number == "120" & Terminal_branch == "A"] <- 0.7214)
+traitdata <- within(traitdata, Fresh_mass_FE[Pot_number == "120" & Terminal_branch == "B"] <- 0.5632)
+traitdata <- within(traitdata, Fresh_mass_FE[Pot_number == "120" & Terminal_branch == "C"] <- 0.5512)
+
+#Pot 84 is just OBLI-B
+traitdata <- within(traitdata, Composition[Pot_number==84] <- 'OBLI-B')
+#Pot 73 is just AMYG-A
+traitdata <- within(traitdata, Composition[Pot_number==73] <- 'AMYG-A')
+#Removing pot 104 becaus this plant had noted dessication from fan and is removed from other datasets
+#had two TBs
+traitdata <- traitdata %>% filter(!(Pot_number==104))
+
+## Allocating species names
+traitdata$Species <- 1
+traitdata <- within(traitdata, Species[Composition == "AMYG-A"] <- 'AMYG')
+traitdata <- within(traitdata, Species[Composition == "OBLI-B"] <- 'OBLI')
+traitdata <- within(traitdata, Species[Composition == "OVAT-C"] <- 'OVAT')
+traitdata <- within(traitdata, Species[Composition == "VIMI-D"] <- 'VIMI')
+
+#Calculate LDMC as fresh mass fully expanded healthy leaves/dry mass from TBs
+#sla #Al:As / Huber value # wd / wood density
+#wood dry mass was measured in mg, need g/cm^3 #wood volume was measured as g
+traitdata <- traitdata %>% mutate(ldmc = Fresh_mass_FE/Dry_mass_FE,
+                                  sla = Fully_exp_leaf_area/Dry_mass_FE,
+                                  huber = Leaf_area/Sapwood_diameter,
+                                  Wood_dry_mass_g = Wood_dry_mass/1000,
+                                  wd = Wood_dry_mass_g/Wood_volume)
+
+#Calculate average huber per plant
+mean_traits_plant <- traitdata %>% group_by(Pot_number) %>% 
+  summarise(mean_huber_plant = mean(huber, na.rm=T),
+            sd_huber = sd(huber, na.rm=T),
+            mean_ldmc_plant = mean(ldmc, na.rm=T),
+            sd_ldmc = sd(ldmc, na.rm=T),
+            mean_sla_plant = mean(sla, na.rm=T),
+            sd_sla = sd(sla, na.rm=T))
+#Merge huber back in
+traitdata <- left_join(traitdata, mean_traits_plant)
+
+sometraits <- traitdata %>% select(Pot_number, Composition, Species, mean_ldmc_plant, mean_sla_plant, mean_huber_plant, wd) %>%
+  group_by(Pot_number) %>% filter(row_number() == 1)
+
+### Add plant-level data to solo well-watered and drought data
+solowatereddata <- left_join(solowatereddata, sometraits)
+###Merge speciestraits with ttmmeans 
+speciestraits <- left_join(speciestraits, ttmmeans)
+###Merge individual wd with ttmmeans
+wddata <- speciestraits %>% select(Species, mean_wd_sp)
+solodroughtdata <- left_join(solodroughtdata, wddata)
+
+#Calculate species means and confidence intervals
+speciestraits <- sometraits %>% group_by(Species) %>% 
+  summarise(mean_huber_sp = mean(mean_huber_plant, na.rm=T),
+            sd_huber_sp = sd(mean_huber_plant, na.rm=T),
+            mean_ldmc_sp = mean(mean_ldmc_plant, na.rm=T),
+            sd_ldmc_sp = sd(mean_ldmc_plant, na.rm=T),
+            mean_sla_sp = mean(mean_sla_plant, na.rm=T),
+            sd_sla_sp = sd(mean_sla_plant, na.rm=T),
+            mean_wd_sp = mean(wd, na.rm=T),
+            sd_wd_sp = sd(wd, na.rm=T),
+            n = n())
+#Calculate CIs
+speciestraits <- speciestraits %>% group_by(Species) %>% mutate(upper_huber = (mean_huber_sp + qnorm(0.75) * sd_huber_sp/sqrt(n)),
+                                lower_huber = (mean_huber_sp - qnorm(0.75) * sd_huber_sp/sqrt(n)),
+                                upper_sla = (mean_sla_sp + qnorm(0.75) * sd_sla_sp/sqrt(n)),
+                                lower_sla = (mean_sla_sp - qnorm(0.75) * sd_sla_sp/sqrt(n)),
+                                upper_wd = (mean_wd_sp + qnorm(0.75) * sd_wd_sp/sqrt(n)),
+                                lower_wd = (mean_wd_sp - qnorm(0.75) * sd_wd_sp/sqrt(n)))
+
+#Merge with species RGR and mort data in meandata
+meandata <- left_join(meandata, speciestraits)

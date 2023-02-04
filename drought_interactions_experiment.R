@@ -11,6 +11,7 @@ library(lmerTest)
 library(DHARMa)
 library(MuMIn)
 library(sjPlot)
+library(emmeans)
 ##Colours I like
 #cornflowerblue
 #thistle
@@ -241,13 +242,25 @@ solodata %>% filter(!(Species == '?')) %>%
   geom_boxplot()+
   geom_jitter(width=0.05, height=0.05)+
   theme_classic()
-## Stats - trade-off between drought tolerance and growth rate ####
+## Stats - fig 2 - trade-off between drought tolerance and growth rate ####
 #regression
 tradeoff <- lm(tt100m ~ sqrt(RGR_predrought) + Species, solodroughtdata)
 summary(tradeoff)
-growthdharm <- simulateResiduals(growthmod)
+growthdharm <- simulateResiduals(tradeoff)
 plot(growthdharm)
-r.squaredGLMM(growthmod)
+r.squaredGLMM(tradeoff)
+
+tradeoff2 <- lmer(tt100m ~ sqrt(RGR_predrought) + (1|Species), solodroughtdata)
+summary(tradeoff2)
+growthdharm <- simulateResiduals(tradeoff2)
+plot(growthdharm)
+r.squaredGLMM(tradeoff2)
+
+tradeoff3 <- lm(tt100m ~ sqrt(RGR_predrought), solodroughtdata)
+summary(tradeoff3)
+growthdharm <- simulateResiduals(tradeoff3)
+plot(growthdharm)
+r.squaredGLMM(tradeoff3)
 
 #### Table of sample sizes ####
 
@@ -452,6 +465,50 @@ legend("bottomleft", inset = 0.05, title = "Species", unique(meandata$Species), 
 #points(jitter(tt100m, amount = 0.1) ~ jitter(sqrt(RGR_predrought), amount = 0.1), 
 #       col=alpha(c('red', 'blue', 'green', 'purple')[as.factor(meandata$Species)], 0.3), pch = 19, cex = 3, solodroughtdata)
 dev.off()
+
+### No square root RGR
+dev.off()
+pdf("Output/ttm~rgr_no_sqrt.pdf", width=21, height=21)
+par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
+plot(mean_tt100m ~ mean_RGRpredrought, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,5), xlim=c(0,18), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=5, bty="n", meandata)
+mtext("Mean time to 100% mortality (weeks)", side=2, outer=T, cex=5, line=4)
+mtext("Mean RGR pre-drought (mm/day)", side=1, outer=T, cex=5, line=5)
+arrows(x0=meandata$mean_RGRpredrought, y0=meandata$lower_ttm100,
+       x1=meandata$mean_RGRpredrought, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_rgr, y0=meandata$mean_tt100m,
+       x1=meandata$upper_rgr, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+box(bty="l", lwd=4)
+points(mean_tt100m ~ mean_RGRpredrought, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+legend("bottomleft", inset = 0.05, title = "Species", c(expression(italic("E. amygdalina")), expression(italic("E. obliqua")), expression(italic("E. ovata")), expression(italic("E. viminalis"))), pch=19, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 4)
+dev.off()
+
+## with underlying data points
+### Not working properly **
+dev.off()
+pdf("Output/ttm~rgr_data.pdf", width=21, height=21)
+par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
+plot(mean_tt100m ~ mean_RGRpredrought, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,5), xlim=c(0,18), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=5, bty="n", meandata)
+points(tt100m ~ RGR_predrought, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(solodroughtdata$Species)], 
+       pch = 19, cex = 3, solodroughtdata)
+mtext("Mean time to 100% mortality (weeks)", side=2, outer=T, cex=5, line=4)
+mtext("Mean RGR pre-drought (mm/day)", side=1, outer=T, cex=5, line=5)
+arrows(x0=meandata$mean_RGRpredrought, y0=meandata$lower_ttm100,
+       x1=meandata$mean_RGRpredrought, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_rgr, y0=meandata$mean_tt100m,
+       x1=meandata$upper_rgr, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+box(bty="l", lwd=4)
+points(mean_tt100m ~ mean_RGRpredrought, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+legend("bottomleft", inset = 0.05, title = "Species", c(expression(italic("E. amygdalina")), expression(italic("E. obliqua")), expression(italic("E. ovata")), expression(italic("E. viminalis"))), pch=19, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 4)
+dev.off()
+
 #### Figure 3 - watered growth rates alone or with cons or hets ####
 ggplot(pot_rgr_cons, aes(x = Composition, y = mean_pot_rgr_predrought))+
   geom_jitter(alpha=0.4, width=0.05)+
@@ -479,9 +536,6 @@ a <- ggplot() +
   theme(axis.text=element_text(size=14), 
         axis.title=element_text(size=14))
 #Note that one of the 0 RGRs for ovat-c pot 8 is legitimate, stopped growing
-#Reordering Composition:Species
-pot_rgr_cons$Composition <- factor(pot_rgr_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
-comp_rgr_cons$Composition <- factor(comp_rgr_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
 #growth rate
 b <- ggplot() + 
   geom_jitter(data=pot_rgr_hets, aes(x=compspecies, y=sqrt(mean_pot_rgr_predrought)), alpha=0.3, width=0.05, height=0.05) + 
@@ -549,6 +603,15 @@ ggplot() +
         axis.title=element_text(size=16))
 
 ## Stats - growth rate by composition ####
+#overall
+test <- alldata %>% unite("speciescomp", Species:Composition, remove = FALSE)
+test <- test %>% filter(Composition == "AACC" | Composition == "AADD" 
+                        | Composition == "AMYG-A" | Composition == "AAAA")
+growthoverallmod <- lmer(sqrt(RGR_predrought) ~ speciescomp + (1|Pot_number), test)
+summary(growthoverallmod)
+emmeans(growthoverallmod, list(pairwise ~ speciescomp), adjust="tukey")
+
+
 #By species, pot as a random effect, alone_or_four is for e.g. A or AAAA only
 amygcompdata <- alone_or_four %>% filter(Species=="AMYG")
 #Reorder levels so alone is the reference
@@ -559,10 +622,20 @@ summary(amygcompmod)
 dharm <- simulateResiduals(amygcompmod)
 plot(dharm)
 r.squaredGLMM(amygcompmod)
+#using emmeans to compare groups, Tukey posthoc test
+emmeans(amygcompmod, list(pairwise ~ Composition), adjust="tukey")
+#These two below lines do the same thing as above
+test <- emmeans(amygcompmod, ~Composition)
+pairs(test)
+#another method
+library(multcomp)
+summary(glht(amygcompmod, linfct = mcp(Composition = "Tukey")), test = adjusted("holm"))
+
 ##obli
 obli_comp$Composition <- factor(obli_comp$Composition, levels = c("OBLI-B", "BB", "AB", "BC", "BD"))
 oblicompmod <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), obli_comp)
 summary(oblicompmod)
+tab_model(oblicompmod)
 #grouped hets
 oblicompmod2 <- lmer(sqrt(RGR_predrought) ~ grouped_comp + (1|Pot_number), obli_comp)
 summary(oblicompmod2)
@@ -689,6 +762,114 @@ growth_effects_kbl %>% mutate(Effect = c("Intercept", "Total NCI", "Mean MD", "M
 
 #### Fig 3 as a coef plot ####
 #do this*
+#### Figure 4 - effect of nbhs on time to mortality ####
+#geom_point(data=mean_ttm_cons, aes(x=Composition, y=mean_tt100m), cex=0.6, outlier.size=2.5) + 
+##CIS and points
+
+##boxplots
+#Reordering Composition for cons
+pot_ttm_cons$Composition <- factor(pot_ttm_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
+mean_ttm_cons$Composition <- factor(mean_ttm_cons$Composition, level = c("AMYG-A", "AAAA", "OVAT-C", "CCCC", "VIMI-D", "DDDD"))
+
+a <- ggplot() + 
+  geom_boxplot(data=pot_ttm_cons, aes(x=Composition, y=potmean_tt100m), cex=0.6, outlier.size=2.5) + 
+  geom_jitter(data=pot_ttm_cons, aes(x=Composition, y=potmean_tt100m), alpha=0.2, cex=2, width=0.05) + 
+  ylab("Time to 100% mortality (weeks)")+
+  ylim(-0.1,5.5)+
+  theme_classic()+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14))
+#growth rate
+b <- ggplot() + 
+  geom_boxplot(data=pot_ttm_hets, aes(x=compspecies, y=potmean_tt100m), cex=0.6, outlier.size=2.5) + 
+  geom_jitter(data=pot_ttm_hets, aes(x=compspecies, y=potmean_tt100m), alpha=0.2, cex=1.5, width=0.05) + 
+  ylab("Time to 100% mortality (weeks)")+
+  ylim(-0.1,5.5)+
+  xlab("Composition_Species")+
+  theme_classic()+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14))
+cowplot::plot_grid(a,b, align="hv", ncol=1, labels = c('A)', 'B)'), hjust=-3)
+#### Supp figure - Fig 4 but for OBLI B, BB, AB, BC, BD ####
+#just not enough data
+#### Stats - Fig 4 mortality and comp ####
+amygttmcomp <- alone_or_four %>% filter(Species=="AMYG")
+#Reorder levels so alone is the reference
+#amyg
+amygttmcomp$Composition <- factor(amygttmcomp$Composition, levels = c("AMYG-A", "AAAA", "AACC", "AADD"))
+amygcompmod <- lmer(tt100m ~ Composition + (1|Pot_number), amygttmcomp)
+summary(amygcompmod)
+dharm <- simulateResiduals(amygcompmod)
+plot(dharm)
+r.squaredGLMM(amygcompmod)
+##obli
+##not enough data
+
+##ovat
+ovatttmcomp <- alone_or_four %>% filter(Species=="OVAT")
+ovatttmcomp$Composition <- factor(ovatttmcomp$Composition, levels = c("OVAT-C", "CCCC", "AACC", "CCDD"))
+ovatcompmod <- lmer(tt100m ~ Composition + (1|Pot_number), ovatttmcomp)
+summary(ovatcompmod)
+dharm <- simulateResiduals(ovatcompmod)
+plot(dharm)
+r.squaredGLMM(ovatcompmod)
+#vimi
+vimittmcomp <- alone_or_four %>% filter(Species=="VIMI")
+vimittmcomp$Composition <- factor(vimittmcomp$Composition, levels = c("VIMI-D", "DDDD", "AADD", "CCDD"))
+vimicompmod <- lmer(tt100m ~ Composition + (1|Pot_number), vimittmcomp)
+summary(vimicompmod)
+dharm <- simulateResiduals(vimicompmod)
+plot(dharm)
+r.squaredGLMM(vimicompmod)
+emmeans(vimicompmod, list(pairwise ~ Composition), adjust="tukey")
+
+
+##stats table ##
+tab_model(amygcompmod, ovatcompmod, vimicompmod, transform = NULL)
+
+#testing differences between compositions, e.g. does AACC_ovat take longer
+# to die than AACC_amyg?
+#alone_or_four <- alone_or_four %>% unite("compspecies", Composition:Species, remove = FALSE)
+#need to reorder, haven't done that yet
+#testmod <- lmer(tt100m ~ compspecies + (1|Pot_number), alone_or_four)
+#summary(testmod)
+
+
+### Coef plot of growth rates alone or with cons or hets
+#recall that labels are inverted
+specieslist <- c("AMYG", "OVAT", "VIMI")
+ttmmods <- c(amygcompmod, ovatcompmod, vimicompmod)
+#Making coefficient plot for survival as a function of environment
+plot_models(ttmmods, transform = NULL, vline.color = "grey", legend.title = "Species",
+            dot.size = 2, line.size = 1)+
+  ylab("Estimate")+
+  theme_classic()+
+  scale_colour_discrete(labels = c("VIMI", "OVAT", "AMYG"))
+
+### have not updated this section ###
+###with obli too
+#need to rework amyg/ovat/vimi models to include AB, BC and BD responses
+amygttmcomp2 <- alldata %>% filter(Species == "AMYG")
+amygttmcomp2$Composition <- factor(amygttmcomp2$Composition, levels = c("AMYG-A", "AAAA", "AB", "AACC", "AADD"))
+amygcompmod2 <- lmer(tt100m ~ Composition + (1|Pot_number), amygttmcomp2)
+summary(amygcompmod2)
+ovatttmcomp2 <- alldata %>% filter(Species == "OVAT")
+ovatttmcomp2$Composition <- factor(ovatttmcomp2$Composition, levels = c("OVAT-C", "CCCC", "BC", "AACC", "CCDD"))
+ovatcompmod2 <- lmer(tt100m ~ Composition + (1|Pot_number), ovatttmcomp2)
+summary(ovatcompmod2)
+vimittmcomp2 <- alldata %>% filter(Species == "VIMI")
+vimittmcomp2$Composition <- factor(vimittmcomp2$Composition, levels = c("VIMI-D", "DDDD", "AADD", "BD", "CCDD"))
+vimicompmod2 <- lmer(tt100m ~ Composition + (1|Pot_number), vimittmcomp2)
+summary(vimicompmod2)
+
+specieslist2 <- c("AMYG", "OBLI", "OVAT", "VIMI")
+growthmods2 <- c(amygcompmod2, oblicompmod, ovatcompmod2, vimicompmod2)
+plot_models(growthmods2, transform = NULL, vline.color = "grey", legend.title = "Species",
+            dot.size = 2, line.size = 1)+
+  ylab("Estimate")+
+  theme_classic()+
+  scale_colour_discrete(labels = c("VIMI", "OVAT", "OBLI", "AMYG"))
+###
 #### Layout script ####
 #Want to randomly assign numbers to treatments for layout
 #Importing dataframe with designs listed
@@ -743,4 +924,330 @@ growth_effects_kbl %>% mutate(Effect = c("Intercept", "Total NCI", "Mean MD", "M
 
 
 
+
+
+#### Traits plots #####
+#Hist of traits
+hist(sometraits$mean_ldmc_plant)
+hist(sometraits$mean_sla_plant)
+hist(sometraits$mean_huber_plant)
+hist(sometraits$wd)
+#huber
+ggplot(sometraits, aes(x = Species, y = mean_huber_plant))+
+  geom_boxplot()+
+  geom_jitter(alpha = 0.3, width = 0.1)+
+  theme_classic()
+#sla
+ggplot(sometraits, aes(x = Species, y = mean_sla_plant))+
+  geom_boxplot()+
+  geom_jitter(alpha = 0.3, width = 0.1)+
+  theme_classic()
+#ldmc
+ggplot(sometraits, aes(x = Species, y = mean_ldmc_plant))+
+  geom_boxplot()+
+  geom_jitter(alpha = 0.3, width = 0.1)+
+  theme_classic()
+#wd
+ggplot(sometraits, aes(x = Species, y = wd))+
+  geom_boxplot()+
+  geom_jitter(alpha = 0.3, width = 0.1)+
+  theme_classic()
+
+### Plot - ttm against sla, wd and huber
+#ttm ~ wd
+dev.off()
+pdf("Output/ttm~wd.pdf", width=21, height=21)
+par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
+plot(mean_tt100m ~ mean_wd_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,5), xlim=c(0.45,0.52), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+mtext("Mean time to 100% mortality (weeks)", side=2, outer=T, cex=4, line=4)
+mtext("Mean wood density (g/cm^3)", side=1, outer=T, cex=5, line=5)
+arrows(x0=meandata$mean_wd_sp, y0=meandata$lower_ttm100,
+       x1=meandata$mean_wd_sp, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_wd, y0=meandata$mean_tt100m,
+       x1=meandata$upper_wd, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+points(mean_tt100m ~ mean_wd_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+box(bty="l", lwd=4)
+legend("bottomleft", inset = 0.05, title = "Species", c(expression(italic("E. amygdalina")), expression(italic("E. obliqua")), expression(italic("E. ovata")), expression(italic("E. viminalis"))), pch=19, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 4)
+dev.off()
+
+#ttm ~ wd
+dev.off()
+pdf("Output/ttm~huber.pdf", width=21, height=21)
+par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
+plot(mean_tt100m ~ mean_huber_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,5), xlim=c(20,60), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+mtext("Mean time to 100% mortality (weeks)", side=2, outer=T, cex=4, line=4)
+mtext("Mean Huber value", side=1, outer=T, cex=4, line=5)
+arrows(x0=meandata$mean_huber_sp, y0=meandata$lower_ttm100,
+       x1=meandata$mean_huber_sp, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_huber, y0=meandata$mean_tt100m,
+       x1=meandata$upper_huber, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+points(mean_tt100m ~ mean_huber_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+box(bty="l", lwd=4)
+legend("bottomleft", inset = 0.05, title = "Species", c(expression(italic("E. amygdalina")), expression(italic("E. obliqua")), expression(italic("E. ovata")), expression(italic("E. viminalis"))), pch=19, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 4)
+dev.off()
+
+### Plot - rgr against sla and wood density
+dev.off()
+pdf("Output/rgr~sla.pdf", width=21, height=21)
+par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
+plot(mean_RGRpredrought ~ mean_sla_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,18), xlim=c(80,150), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+mtext("Mean RGR pre-drought (mm/day)", side=2, outer=T, cex=4, line=4)
+mtext("Mean specific leaf area (cm^2/g)", side=1, outer=T, cex=4, line=5)
+arrows(x0=meandata$mean_sla_sp, y0=meandata$lower_rgr,
+       x1=meandata$mean_sla_sp, y1=meandata$upper_rgr, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_sla, y0=meandata$mean_RGRpredrought,
+       x1=meandata$upper_sla, y1=meandata$mean_RGRpredrought, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+box(bty="l", lwd=4)
+points(mean_RGRpredrought ~ mean_sla_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+legend("bottomleft", inset = 0.05, title = "Species", c(expression(italic("E. amygdalina")), expression(italic("E. obliqua")), expression(italic("E. ovata")), expression(italic("E. viminalis"))), pch=19, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 4)
+dev.off()
+
+#with underlying points
+dev.off()
+pdf("Output/rgr~sla+points.pdf", width=21, height=21)
+par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
+plot(mean_RGRpredrought ~ mean_sla_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,18), xlim=c(70,190), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+points(RGR_predrought ~ mean_sla_plant, cex=3, pch=19, col = alpha(c('red', 'blue', 'forestgreen', 'purple')[as.factor(solowatereddata$Species)], 0.4), solowatereddata)
+mtext("Mean RGR pre-drought (mm/day)", side=2, outer=T, cex=4, line=4)
+mtext("Mean specific leaf area (cm^2/g)", side=1, outer=T, cex=4, line=5)
+arrows(x0=meandata$mean_sla_sp, y0=meandata$lower_rgr,
+       x1=meandata$mean_sla_sp, y1=meandata$upper_rgr, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_sla, y0=meandata$mean_RGRpredrought,
+       x1=meandata$upper_sla, y1=meandata$mean_RGRpredrought, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+box(bty="l", lwd=4)
+points(mean_RGRpredrought ~ mean_sla_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+legend("bottomleft", inset = 0.05, title = "Species", c(expression(italic("E. amygdalina")), expression(italic("E. obliqua")), expression(italic("E. ovata")), expression(italic("E. viminalis"))), pch=19, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 4)
+dev.off()
+
+dev.off()
+pdf("Output/rgr~wd.pdf", width=21, height=21)
+par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
+plot(mean_RGRpredrought ~ mean_wd_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,18), xlim=c(0.45,0.52), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+mtext("Mean RGR pre-drought (mm/day)", side=2, outer=T, cex=4, line=4)
+mtext("Mean wood density (g/cm^3)", side=1, outer=T, cex=4, line=5)
+arrows(x0=meandata$mean_wd_sp, y0=meandata$lower_rgr,
+       x1=meandata$mean_wd_sp, y1=meandata$upper_rgr, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_wd, y0=meandata$mean_RGRpredrought,
+       x1=meandata$upper_wd, y1=meandata$mean_RGRpredrought, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+points(mean_RGRpredrought ~ mean_wd_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+box(bty="l", lwd=4)
+legend("bottomleft", inset = 0.05, title = "Species", c(expression(italic("E. amygdalina")), expression(italic("E. obliqua")), expression(italic("E. ovata")), expression(italic("E. viminalis"))), pch=19, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 4)
+dev.off()
+
+### Figure 5 - traits ####
+dev.off()
+pdf("Output/traits_panel.pdf", width=21, height=21)
+par(mfrow=c(2,2), oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 7, 10))
+#ttm ~ wd
+plot(mean_tt100m ~ mean_wd_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,5), xlim=c(0.45,0.52), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+mtext("Mean time to 100% mortality (wks)", side=2, outer=F, cex=3.5, line=7)
+mtext("Mean wood density (g/cm^3)", side=1, outer=F, cex=3.5, line=7)
+arrows(x0=meandata$mean_wd_sp, y0=meandata$lower_ttm100,
+       x1=meandata$mean_wd_sp, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_wd, y0=meandata$mean_tt100m,
+       x1=meandata$upper_wd, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+points(mean_tt100m ~ mean_wd_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+box(bty="l", lwd=4)
+#ttm ~ wd
+plot(mean_tt100m ~ mean_huber_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,5), xlim=c(20,60), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+mtext("Mean time to 100% mortality (wks)", side=2, outer=F, cex=3.5, line=7)
+mtext("Mean Huber value", side=1, outer=F, cex=3.5, line=7)
+arrows(x0=meandata$mean_huber_sp, y0=meandata$lower_ttm100,
+       x1=meandata$mean_huber_sp, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_huber, y0=meandata$mean_tt100m,
+       x1=meandata$upper_huber, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+points(mean_tt100m ~ mean_huber_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+box(bty="l", lwd=4)
+#rgr ~ wd
+plot(mean_RGRpredrought ~ mean_wd_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,18), xlim=c(0.42,0.55), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+points(RGR_predrought ~ wd, cex=3, pch=19, col = alpha(c('red', 'blue', 'forestgreen', 'purple')[as.factor(solowatereddata$Species)], 0.4), solowatereddata)
+mtext("Mean RGR pre-drought (mm/day)", side=2, outer=F, cex=3.5, line=7)
+mtext("Mean wood density (g/cm^3)", side=1, outer=F, cex=3.5, line=7)
+arrows(x0=meandata$mean_wd_sp, y0=meandata$lower_rgr,
+       x1=meandata$mean_wd_sp, y1=meandata$upper_rgr, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_wd, y0=meandata$mean_RGRpredrought,
+       x1=meandata$upper_wd, y1=meandata$mean_RGRpredrought, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+points(mean_RGRpredrought ~ mean_wd_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+box(bty="l", lwd=4)
+#rgr ~ SLA
+plot(mean_RGRpredrought ~ mean_sla_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,18), xlim=c(70,190), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+points(RGR_predrought ~ mean_sla_plant, cex=3, pch=19, col = alpha(c('red', 'blue', 'forestgreen', 'purple')[as.factor(solowatereddata$Species)], 0.4), solowatereddata)
+mtext("Mean RGR pre-drought (mm/day)", side=2, outer=F, cex=3.5, line=7)
+mtext("Mean specific leaf area (cm^2/g)", side=1, outer=F, cex=3.5, line=7)
+arrows(x0=meandata$mean_sla_sp, y0=meandata$lower_rgr,
+       x1=meandata$mean_sla_sp, y1=meandata$upper_rgr, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_sla, y0=meandata$mean_RGRpredrought,
+       x1=meandata$upper_sla, y1=meandata$mean_RGRpredrought, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+box(bty="l", lwd=4)
+points(mean_RGRpredrought ~ mean_sla_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+dev.off()
+
+############# WITH legend
+dev.off()
+pdf("Output/traits_panel+legend.pdf", width=21, height=21)
+par(mfrow=c(2,2), oma=c(15,8,1,1), mgp=c(0,2.5,0), mar=c(3, 3, 10, 12))
+#ttm ~ wd
+plot(mean_tt100m ~ mean_wd_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,5), xlim=c(0.45,0.52), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+mtext("Mean time to 100% mortality (wks)", side=2, outer=F, cex=3.5, line=7)
+mtext("Mean wood density (g/cm^3)", side=1, outer=F, cex=3.5, line=7)
+arrows(x0=meandata$mean_wd_sp, y0=meandata$lower_ttm100,
+       x1=meandata$mean_wd_sp, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_wd, y0=meandata$mean_tt100m,
+       x1=meandata$upper_wd, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+points(mean_tt100m ~ mean_wd_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+box(bty="l", lwd=4)
+mtext(expression(bold("A)")), side=1, cex=3.8, adj=0.01, padj=-11, line=-2)
+#ttm ~ wd
+plot(mean_tt100m ~ mean_huber_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,5), xlim=c(20,60), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+mtext("Mean time to 100% mortality (wks)", side=2, outer=F, cex=3.5, line=7)
+mtext("Mean Huber value", side=1, outer=F, cex=3.5, line=7)
+arrows(x0=meandata$mean_huber_sp, y0=meandata$lower_ttm100,
+       x1=meandata$mean_huber_sp, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_huber, y0=meandata$mean_tt100m,
+       x1=meandata$upper_huber, y1=meandata$mean_tt100m, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+points(mean_tt100m ~ mean_huber_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+box(bty="l", lwd=4)
+mtext(expression(bold("B)")), side=1, cex=3.8, adj=0.005, padj= -11, line=-2)
+#rgr ~ wd
+plot(mean_RGRpredrought ~ mean_wd_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,18), xlim=c(0.42,0.55), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+points(RGR_predrought ~ wd, cex=3, pch=19, col = alpha(c('red', 'blue', 'forestgreen', 'purple')[as.factor(solowatereddata$Species)], 0.4), solowatereddata)
+mtext("RGR pre-drought (mm/day)", side=2, outer=F, cex=3.5, line=7)
+mtext("Wood density (g/cm^3)", side=1, outer=F, cex=3.5, line=7)
+arrows(x0=meandata$mean_wd_sp, y0=meandata$lower_rgr,
+       x1=meandata$mean_wd_sp, y1=meandata$upper_rgr, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_wd, y0=meandata$mean_RGRpredrought,
+       x1=meandata$upper_wd, y1=meandata$mean_RGRpredrought, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+points(mean_RGRpredrought ~ mean_wd_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+box(bty="l", lwd=4)
+mtext(expression(bold("C)")), side=1, cex=3.8, adj=0.005, padj= -11, line=-2)
+#rgr ~ SLA
+plot(mean_RGRpredrought ~ mean_sla_sp, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], 
+     ylab="", ylim=c(0,18), xlim=c(70,190), 
+     xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
+points(RGR_predrought ~ mean_sla_plant, cex=3, pch=19, col = alpha(c('red', 'blue', 'forestgreen', 'purple')[as.factor(solowatereddata$Species)], 0.4), solowatereddata)
+mtext("RGR pre-drought (mm/day)", side=2, outer=F, cex=3.5, line=7)
+mtext("Specific leaf area (cm^2/g)", side=1, outer=F, cex=3.5, line=7)
+arrows(x0=meandata$mean_sla_sp, y0=meandata$lower_rgr,
+       x1=meandata$mean_sla_sp, y1=meandata$upper_rgr, code=3, cex = 4, angle=90, length=0.1, lwd=5)
+arrows(x0=meandata$lower_sla, y0=meandata$mean_RGRpredrought,
+       x1=meandata$upper_sla, y1=meandata$mean_RGRpredrought, code=3, angle=90, cex = 4, length=0.1, lwd=5)
+box(bty="l", lwd=4)
+points(mean_RGRpredrought ~ mean_sla_sp, pch=19, cex=4, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], meandata)
+mtext(expression(bold("D)")), side=1, cex=3.8, adj=0.005, padj= -11, line=-2)
+#add legend beneath all of them
+### Need this reset function before legend:
+reset <- function() {
+  par(mfrow=c(1, 1), oma=rep(0, 4), mar=rep(0, 4), new=TRUE)
+  plot(0:1, 0:1, type="n", xlab="", ylab="", axes=FALSE)
+}
+reset()
+legend("bottom", horiz=T, title = NULL, c(expression(italic("E. amygdalina")), expression(italic("E. obliqua")), expression(italic("E. ovata")), expression(italic("E. viminalis"))), pch=19, 
+       col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 3.5, bty="n")
+dev.off()
+
+### Stats - traits ####
+#SPECIES DIFFERENCES
+wdmod <- lm(wd ~ Species, sometraits)
+wddharm <- simulateResiduals(wdmod)
+plot(wddharm)
+summary(wdmod)
+emmeans(wdmod, list(pairwise ~ Species), adjust="tukey")
+
+slamod <- lm(mean_sla_plant ~ Species, sometraits)
+sladharm <- simulateResiduals(slamod)
+plot(sladharm)
+summary(slamod)
+emmeans(slamod, list(pairwise ~ Species), adjust="tukey")
+
+hubermod <- lm(mean_huber_plant ~ Species, sometraits)
+huberdharm <- simulateResiduals(hubermod) 
+plot(huberdharm)
+summary(hubermod)
+emmeans(hubermod, list(pairwise ~ Species), adjust="tukey")
+
+tab_model(hubermod, slamod, wdmod)
+
+#CORRELATIONS BETWEEN TRAITS AND RGR
+rgrslamod <- lmer(sqrt(RGR_predrought) ~ mean_sla_plant + (1|Species), solowatereddata)
+summary(rgrslamod)
+dharm <- simulateResiduals(rgrslamod) 
+plot(dharm)
+r.squaredGLMM(rgrslamod)
+
+ggplot(solowatereddata, aes(x = mean_sla_plant, y = sqrt(RGR_predrought)))+
+  geom_point(alpha=0.4)+
+  geom_smooth(method="lm")+
+  theme_classic()
+
+rgrwdmod <- lmer(sqrt(RGR_predrought) ~ wd + (1|Species), solowatereddata)
+summary(rgrwdmod)
+dharm <- simulateResiduals(rgrwdmod) 
+plot(dharm)
+r.squaredGLMM(rgrwdmod)
+#plot
+ggplot(solowatereddata, aes(x = wd, y = sqrt(RGR_predrought)))+
+  geom_point(alpha=0.4)+
+  geom_smooth(method="lm")+
+  theme_classic()
+
+#CORRELATIONS BETWEEN TRAITS AND TTM and RGR
+ttmwdmod <- lm(mean_tt100m ~ mean_wd_sp, speciestraits)
+summary(ttmwdmod)
+dharm <- simulateResiduals(ttmwdmod) 
+plot(dharm)
+r.squaredGLMM(ttmwdmod)
+
+ttmwdmod2 <- lm(tt100m ~ mean_wd_sp, solodroughtdata)
+summary(ttmwdmod2)
+dharm <- simulateResiduals(ttmwdmod2) 
+plot(dharm)
+r.squaredGLMM(ttmwdmod2)
+
+ttmhubermod <- lm(mean_tt100m ~ mean_huber_sp, speciestraits)
+summary(ttmhubermod)
+dharm <- simulateResiduals(ttmhubermod) 
+plot(dharm)
+r.squaredGLMM(rgrwdmod)
 
