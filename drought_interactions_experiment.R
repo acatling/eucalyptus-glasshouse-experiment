@@ -23,6 +23,9 @@ hist(alldata$RGR_predrought)
 hist(alldata$RGR_duringdrought)
 hist(sqrt(alldata$RGR_overall))
 hist(sqrt(controldata$RGR_overall))
+hist(sqrt(alldata$tt100m))
+hist(alldata$tt50m)
+
 
 ## Mortality ####
 #Setting a seed makes sure the line matches the jittered point #seed =123. In theory....
@@ -48,8 +51,8 @@ alldatalong %>% filter(!(Species == '?')) %>%
   ylim(-15,115)+
   facet_wrap(~Species)
 
-## Stats - mortality model ####
-hist(solodroughtdata$tt100m)
+## Stats - mortality model (fig 1) ####
+hist(log(solodroughtdata$tt100m))
 hist(solodroughtdata$tt50m)
 
 mort50mod <- lm(tt50m ~ Species, solodroughtdata)
@@ -57,12 +60,24 @@ summary(mort50mod)
 mortdharm <- simulateResiduals(mort50mod)
 plot(mortdharm)
 r.squaredGLMM(mort50mod)
+emmeans(mort50mod, list(pairwise ~ Species), adjust="tukey")
+
 
 mort100mod <- lm(tt100m ~ Species, solodroughtdata)
 summary(mort100mod)
 mortdharm <- simulateResiduals(mort100mod)
 plot(mortdharm)
 r.squaredGLMM(mort100mod)
+emmeans(mort100mod, list(pairwise ~ Species), adjust="tukey")
+
+
+##07/02/23
+#family = Gamma(link=log)
+#mort100mod2 <- glm(tt100m ~ Species, family = Gamma, solodroughtdata)
+#summary(mort100mod2)
+#mortdharm <- simulateResiduals(mort100mod2)
+#plot(mortdharm)
+##
 
 solodroughtdata$Species <- factor(solodroughtdata$Species, levels = c("VIMI", "AMYG", "OBLI", "OVAT"))
 solodroughtdata$Species <- factor(solodroughtdata$Species, levels = c("AMYG", "OBLI", "OVAT", "VIMI"))
@@ -204,14 +219,15 @@ ggplot(solodata, aes(x = Species, y = RGR_predrought))+
 #Check this pot - is it amyg or vimi? 100 
 test <- alldata %>% filter(Species=="AMYG" & Composition == "VIMI-D")
 
-## Stats - growth rate model ####
+## Stats - growth rate model (fig 1) ####
 #Two weeks before drought
+solodata$Species <- factor(solodata$Species, levels = c("AMYG", "OBLI", "OVAT", "VIMI"))
 growthmod <- lm(sqrt(RGR_predrought) ~ Species, solodata)
 summary(growthmod)
 growthdharm <- simulateResiduals(growthmod)
 plot(growthdharm)
 r.squaredGLMM(growthmod)
-solodata$Species <- factor(solodata$Species, levels = c("AMYG", "OBLI", "OVAT", "VIMI"))
+emmeans(growthmod, list(pairwise ~ Species), adjust="tukey")
 
 ggplot(solodata, aes(x = Species, y = sqrt(RGR_predrought)))+
   geom_boxplot()+
@@ -347,40 +363,51 @@ ggplot(ttmmeans, aes(x = Species, y = mean_tt100m))+
 ### change shape of mean data points and save - fixes errors bars for obli
 #### Figure 1 - ttm and growth rates of species ####
 #100 m 
+
+## for the y axis letterings, can also specify y = 1+mean_tt100m for example!
+#to put it at a standardised height
 c <- ggplot() + 
-  geom_jitter(data=solodroughtdata, aes(x=Species, y=tt100m), alpha=0.3, width=0.05, height=0.05) + 
-  geom_point(data=ttmmeans, aes(x=Species, y=mean_tt100m), cex=2)+
-  geom_errorbar(data=ttmmeans, aes(x=Species, ymin = mean_tt100m-sd_tt100m, ymax = mean_tt100m+sd_tt100m, width = 0.15), cex=1)+
-  ylab("Time to 100% mortality (wks)")+
+  geom_jitter(data=solodroughtdata, aes(x=Species, y=tt100m), alpha=0.2, col = "grey10", width=0.1, cex = 2.5) + 
+  geom_point(data=meandata, aes(x=Species, y=mean_tt100m), cex=3)+
+  geom_errorbar(data=meandata, aes(x=Species, ymin = lower_ttm100, ymax = upper_ttm100, width = 0.15), cex=1)+
+  ylab("Time to 100% leaf mortality\n(weeks)")+
   theme_classic()+
-  theme(axis.text=element_text(size=12), 
-        axis.title=element_text(size=12))
+  ylim(0, 5.6)+
+  scale_x_discrete(labels=c("E. amygdalina", "E. obliqua", "E. ovata", "E. viminalis"))+
+  geom_text(data=meandata, aes(x=Species, y=5.6, label=c('ab', 'ab', 'a', 'b')), size =5)+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14),
+        axis.text.x = element_text(face = "italic"))
 #50m
 b <- ggplot() + 
-  geom_jitter(data=solodroughtdata, aes(x=Species, y=tt50m), alpha=0.3, width=0.05, height=0.05) + 
-  geom_point(data=ttmmeans, aes(x=Species, y=mean_tt50m), cex=2)+
-  geom_errorbar(data=ttmmeans, aes(x=Species, ymin = mean_tt50m-sd_tt50m, ymax = mean_tt50m+sd_tt50m, width = 0.15), cex=1)+
-  ylab("Time to 50% mortality (wks)")+
+  geom_jitter(data=solodroughtdata, aes(x=Species, y=tt50m), alpha = 0.2, col = "grey10", width=0.1, cex = 2.5) + 
+  geom_point(data=meandata, aes(x=Species, y=mean_tt50m), cex=3)+
+  geom_errorbar(data=meandata, aes(x=Species, ymin = lower_ttm50, ymax = upper_ttm50, width = 0.15), cex=1)+
+  ylab("Time to 50% leaf mortality\n(weeks)")+
   theme_classic()+
-  theme(axis.text=element_text(size=12), 
-        axis.title=element_text(size=12),
+  ylim(0, 5.3)+
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14),
         axis.title.x=element_blank(),
         axis.text.x=element_blank())
 #growth rate
-a <- ggplot(solodata, aes(x = Species, y = sqrt(RGR_predrought)))+
-  geom_jitter(alpha=0.2, width=0.05)+
-  geom_point(stat="summary", fun.y="mean_se",size=2) +
-  geom_errorbar(stat="summary", fun.data="mean_se",width=0.15,size=1)+
-  ylab("RGR pre-drought(mm/day)")+
+a <- ggplot()+
+  geom_jitter(data=solodata, aes(x = Species, y = sqrt(RGR_predrought)), alpha = 0.2, col = "grey10", width=0.1, cex = 2.5)+
+  geom_point(data=meandata, aes(x=Species, y=sqrt(mean_RGRpredrought)), cex=3) +
+  geom_errorbar(data=meandata, aes(x=Species, ymin = sqrt(lower_rgr), ymax = sqrt(upper_rgr), width = 0.15), cex=1)+
+  ylab("sqrt(Relative growth rate) \n(mm/day)")+
   theme_classic()+
-  theme(axis.text=element_text(size=12), 
-        axis.title=element_text(size=12),
+  theme(axis.text=element_text(size=14), 
+        axis.title=element_text(size=14),
         axis.title.x=element_blank(),
         axis.text.x=element_blank())
 
 #Organise them as a three panel with common species labels
 #using cowplot
-cowplot::plot_grid(a,b,c, align="hv", ncol=1, labels = c('A)', 'B)', 'C)'), hjust=-3)
+pdf("Output/figure_1.pdf", width=8, height=8)
+cowplot::plot_grid(a,b,c, align="hv", ncol=1, labels = c('A)', 'B)', 'C)'), hjust=-3.5)
+dev.off()
+
 
 #as boxplots instead:
 a <- ggplot(solodata, aes(x = Species, y = sqrt(RGR_predrought)))+
@@ -509,7 +536,7 @@ legend("bottomleft", inset = 0.05, title = "Species", c(expression(italic("E. am
        col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(meandata$Species)], cex = 4)
 dev.off()
 
-#### Figure 3 - watered growth rates alone or with cons or hets ####
+#### Figure 2 - watered growth rates with nbhs means and CIs ####
 ggplot(pot_rgr_cons, aes(x = Composition, y = mean_pot_rgr_predrought))+
   geom_jitter(alpha=0.4, width=0.05)+
   theme_classic()+
@@ -570,7 +597,7 @@ b <- ggplot() +
         axis.title=element_text(size=14))
 cowplot::plot_grid(a,b, align="hv", ncol=1, labels = c('A)', 'B)'), hjust=-3)
 
-#### Supp figure - Fig 3 but for OBLI B, BB, AB, BC, BD ####
+#### Supp figure - Fig 2 but for OBLI B, BB, AB, BC, BD ####
 obli_comp_avg <- within(obli_comp_avg, compspecies[compspecies=="OBLI-B_OBLI"] <- 'OBLI-B')
 obli_comp_avg <- within(obli_comp_avg, compspecies[compspecies=="BB_OBLI"] <- 'BB')
 oblicomprgrmeans <- within(oblicomprgrmeans, compspecies[compspecies=="OBLI-B_OBLI"] <- 'OBLI-B')
@@ -602,13 +629,15 @@ ggplot() +
   theme(axis.text=element_text(size=16), 
         axis.title=element_text(size=16))
 
-## Stats - growth rate by composition ####
+## Stats - Fig 2 - growth rate by composition ####
 #overall
 test <- alldata %>% unite("speciescomp", Species:Composition, remove = FALSE)
 test <- test %>% filter(Composition == "AACC" | Composition == "AADD" 
                         | Composition == "AMYG-A" | Composition == "AAAA")
 growthoverallmod <- lmer(sqrt(RGR_predrought) ~ speciescomp + (1|Pot_number), test)
 summary(growthoverallmod)
+dharm <- simulateResiduals(growthoverallmod)
+plot(dharm)
 emmeans(growthoverallmod, list(pairwise ~ speciescomp), adjust="tukey")
 
 
@@ -634,6 +663,8 @@ summary(glht(amygcompmod, linfct = mcp(Composition = "Tukey")), test = adjusted(
 ##obli
 obli_comp$Composition <- factor(obli_comp$Composition, levels = c("OBLI-B", "BB", "AB", "BC", "BD"))
 oblicompmod <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), obli_comp)
+dharm <- simulateResiduals(oblicompmod)
+plot(dharm)
 summary(oblicompmod)
 tab_model(oblicompmod)
 #grouped hets
@@ -660,11 +691,10 @@ dharm <- simulateResiduals(vimicompmod)
 plot(dharm)
 r.squaredGLMM(vimicompmod)
 
-### Coef plot of growth rates alone or with cons or hets
+### Fig 2 coef plot of growth rates with nbhs ####
 #recall that labels are inverted
 specieslist <- c("AMYG", "OVAT", "VIMI")
 growthmods <- c(amygcompmod, ovatcompmod, vimicompmod)
-#Making coefficient plot for survival as a function of environment
 plot_models(growthmods, transform = NULL, vline.color = "grey", legend.title = "Species",
             dot.size = 2, line.size = 1)+
   ylab("Estimate")+
@@ -693,6 +723,113 @@ plot_models(growthmods2, transform = NULL, vline.color = "grey", legend.title = 
   ylab("Estimate")+
   theme_classic()+
   scale_colour_discrete(labels = c("VIMI", "OVAT", "OBLI", "AMYG"))
+
+### Reworking labels
+amygcompdata2 <- alone_or_four %>% filter(Species=="AMYG")
+amygcompdata2 <- within(amygcompdata2, Composition[Composition == "AMYG-A"] <- 'alone')
+amygcompdata2 <- within(amygcompdata2, Composition[Composition == "AAAA"] <- 'conspecific')
+amygcompdata2 <- within(amygcompdata2, Composition[Composition == "AACC"] <- 'amygdalina-ovata')
+amygcompdata2 <- within(amygcompdata2, Composition[Composition == "AADD"] <- 'amygdalina-viminalis')
+amygcompdata2$Composition <- factor(amygcompdata2$Composition, levels = c("alone", "conspecific", "amygdalina-ovata", "amygdalina-viminalis"))
+amygcompmod3 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), amygcompdata2)
+
+ovatcompdata2 <- alone_or_four %>% filter(Species=="OVAT")
+ovatcompdata2 <- within(ovatcompdata2, Composition[Composition == "OVAT-C"] <- 'alone')
+ovatcompdata2 <- within(ovatcompdata2, Composition[Composition == "CCCC"] <- 'conspecific')
+ovatcompdata2 <- within(ovatcompdata2, Composition[Composition == "AACC"] <- 'amygdalina-ovata')
+ovatcompdata2 <- within(ovatcompdata2, Composition[Composition == "CCDD"] <- 'ovata-viminalis')
+ovatcompdata2$Composition <- factor(ovatcompdata2$Composition, levels = c("alone", "conspecific", "amygdalina-ovata", "ovata-viminalis"))
+ovatcompmod3 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), ovatcompdata2)
+
+vimicompdata2 <- alone_or_four %>% filter(Species=="VIMI")
+vimicompdata2 <- within(vimicompdata2, Composition[Composition == "VIMI-D"] <- 'alone')
+vimicompdata2 <- within(vimicompdata2, Composition[Composition == "DDDD"] <- 'conspecific')
+vimicompdata2 <- within(vimicompdata2, Composition[Composition == "AADD"] <- 'amygdalina-viminalis')
+vimicompdata2 <- within(vimicompdata2, Composition[Composition == "CCDD"] <- 'ovata-viminalis')
+vimicompdata2$Composition <- factor(vimicompdata2$Composition, levels = c("alone", "conspecific", "amygdalina-viminalis", "ovata-viminalis"))
+vimicompmod3 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), vimicompdata2)
+
+growthmods3 <- c(amygcompmod3, ovatcompmod3, vimicompmod3)
+
+dev.off()
+pdf("Output/figure_2.pdf", width=8, height=4)
+plot_models(growthmods3, transform = NULL, vline.color = "grey", legend.title = "Species",
+            dot.size = 2, line.size = 1)+
+  ylab("Estimate")+
+  xlab("Competition treatment")+
+  theme_classic()+
+  ylim(-3.2,1.2)+
+  scale_colour_discrete(labels = c(expression(italic("E. viminalis")), expression(italic("E. ovata")), expression(italic("E. amygdalina"))))+
+  theme(axis.text=element_text(size=16), 
+        axis.title=element_text(size=16),
+        legend.text = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text.align = 0,
+        legend.position = "right")
+dev.off()
+
+#### Fig 2 coef plot with obli ####
+amygcompdata3 <- alldata %>% filter(Species == "AMYG")
+amygcompdata3 <- within(amygcompdata3, Composition[Composition == "AMYG-A"] <- 'alone')
+amygcompdata3 <- within(amygcompdata3, Composition[Composition == "AAAA"] <- 'conspecific')
+amygcompdata3 <- within(amygcompdata3, Composition[Composition == "AB"] <- 'amygdalina-obliqua')
+amygcompdata3 <- within(amygcompdata3, Composition[Composition == "AACC"] <- 'amygdalina-ovata')
+amygcompdata3 <- within(amygcompdata3, Composition[Composition == "AADD"] <- 'amygdalina-viminalis')
+amygcompdata3$Composition <- factor(amygcompdata3$Composition, levels = c("alone", "conspecific", "amygdalina-obliqua", "amygdalina-ovata", "amygdalina-viminalis"))
+amygcompmod4 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), amygcompdata3)
+
+oblicompdata2 <- obli_comp
+oblicompdata2 <- within(oblicompdata2, Composition[Composition == "OBLI-B"] <- 'alone')
+oblicompdata2 <- within(oblicompdata2, Composition[Composition == "BB"] <- 'conspecific')
+oblicompdata2 <- within(oblicompdata2, Composition[Composition == "AB"] <- 'amygdalina-obliqua')
+oblicompdata2 <- within(oblicompdata2, Composition[Composition == "BC"] <- 'obliqua-ovata')
+oblicompdata2 <- within(oblicompdata2, Composition[Composition == "BD"] <- 'obliqua-viminalis')
+oblicompdata2$Composition <- factor(oblicompdata2$Composition, levels = c("alone", "conspecific", "amygdalina-obliqua", "obliqua-ovata", "obliqua-viminalis"))
+oblicompmod4 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), oblicompdata2)
+
+ovatcompdata3 <- alldata %>% filter(Species=="OVAT")
+ovatcompdata3 <- within(ovatcompdata3, Composition[Composition == "OVAT-C"] <- 'alone')
+ovatcompdata3 <- within(ovatcompdata3, Composition[Composition == "CCCC"] <- 'conspecific')
+ovatcompdata3 <- within(ovatcompdata3, Composition[Composition == "AACC"] <- 'amygdalina-ovata')
+ovatcompdata3 <- within(ovatcompdata3, Composition[Composition == "BC"] <- 'obliqua-ovata')
+ovatcompdata3 <- within(ovatcompdata3, Composition[Composition == "CCDD"] <- 'ovata-viminalis')
+ovatcompdata3$Composition <- factor(ovatcompdata3$Composition, levels = c("alone", "conspecific", "amygdalina-ovata", "obliqua-ovata", "ovata-viminalis"))
+ovatcompmod4 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), ovatcompdata3)
+
+vimicompdata3 <- alldata %>% filter(Species=="VIMI")
+vimicompdata3 <- within(vimicompdata3, Composition[Composition == "VIMI-D"] <- 'alone')
+vimicompdata3 <- within(vimicompdata3, Composition[Composition == "DDDD"] <- 'conspecific')
+vimicompdata3 <- within(vimicompdata3, Composition[Composition == "AADD"] <- 'amygdalina-viminalis')
+vimicompdata3 <- within(vimicompdata3, Composition[Composition == "BD"] <- 'obliqua-viminalis')
+vimicompdata3 <- within(vimicompdata3, Composition[Composition == "CCDD"] <- 'ovata-viminalis')
+vimicompdata3$Composition <- factor(vimicompdata3$Composition, levels = c("alone", "conspecific", "amygdalina-viminalis", "obliqua-viminalis", "ovata-viminalis"))
+vimicompmod4 <- lmer(sqrt(RGR_predrought) ~ Composition + (1|Pot_number), vimicompdata3)
+
+growthmods4 <- c(amygcompmod4, oblicompmod4, ovatcompmod4, vimicompmod4)
+
+dev.off()
+pdf("Output/figure_2+obli.pdf", width=8, height=6)
+#show.p=T, p.shape=T
+#function for backtransforming data - not working, also doesn't work for neg value
+#square <- function(x){
+#  return(x**2)
+#}
+plot_models(growthmods4, transform = NULL, vline.color = "grey", legend.title = "Species",
+            dot.size = 2, line.size = 1, ci.lvl=0.95)+
+  ylab("Estimate")+
+  xlab("Competition treatment")+
+  theme_classic()+
+  ylim(-3.2,2.5)+
+  scale_colour_discrete(labels = c(expression(italic("E. viminalis")), expression(italic("E. ovata")), expression(italic("E. obliqua")), expression(italic("E. amygdalina"))))+
+  theme(axis.text=element_text(size=16), 
+        axis.title=element_text(size=16),
+        legend.text = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text.align = 0,
+        legend.position = "right",
+        legend.title.align = 0.5)
+dev.off()
+
 ### Stats table Fig 3 by species ####
 #sJplot
 #Doesn't work - lose negative sign, not sure how to avoid this
@@ -760,9 +897,7 @@ growth_effects_kbl %>% mutate(Effect = c("Intercept", "Total NCI", "Mean MD", "M
  # row_spec(0, italic = T) %>%
   footnote(general = "Continuous predictors are scaled to a mean of 0. Mean MD is 308.8 mm per growth period. Mean MD anomaly is -336.6 mm per growth period. Mean preceding DBH is 368.2 mm.", general_title="")
 
-#### Fig 3 as a coef plot ####
-#do this*
-#### Figure 4 - effect of nbhs on time to mortality ####
+#### Figure 3 - effect of nbhs on time to mortality means and CIs ####
 #geom_point(data=mean_ttm_cons, aes(x=Composition, y=mean_tt100m), cex=0.6, outlier.size=2.5) + 
 ##CIS and points
 
@@ -790,86 +925,123 @@ b <- ggplot() +
   theme(axis.text=element_text(size=14), 
         axis.title=element_text(size=14))
 cowplot::plot_grid(a,b, align="hv", ncol=1, labels = c('A)', 'B)'), hjust=-3)
-#### Supp figure - Fig 4 but for OBLI B, BB, AB, BC, BD ####
+#### Supp figure - Fig 3 but for OBLI B, BB, AB, BC, BD ####
 #just not enough data
-#### Stats - Fig 4 mortality and comp ####
-amygttmcomp <- alone_or_four %>% filter(Species=="AMYG")
+#### Stats - Fig 3 mortality and comp ####
 #Reorder levels so alone is the reference
 #amyg
+amygttmcomp <- alone_or_four %>% filter(Species=="AMYG", C_or_D == "D")
+hist(amygttmcomp$tt100m)
 amygttmcomp$Composition <- factor(amygttmcomp$Composition, levels = c("AMYG-A", "AAAA", "AACC", "AADD"))
-amygcompmod <- lmer(tt100m ~ Composition + (1|Pot_number), amygttmcomp)
-summary(amygcompmod)
-dharm <- simulateResiduals(amygcompmod)
+amygttmmod <- lmer(tt100m ~ Composition + (1|Pot_number), amygttmcomp)
+summary(amygttmmod)
+dharm <- simulateResiduals(amygttmmod)
 plot(dharm)
-r.squaredGLMM(amygcompmod)
+
+#trying with gamma distribution instead
+#can't have 0 values...
+#amygttmmod2 <- glmer(tt100m ~ Composition + (1|Pot_number), family = Gamma, amygttmcomp)
+#summary(amygttmmod)
+#dharm <- simulateResiduals(amygttmmod)
+#plot(dharm)
+
+r.squaredGLMM(amygttmmod)
+emmeans(amygttmmod, list(pairwise ~ Composition), adjust="tukey")
+
 ##obli
 ##not enough data
 
 ##ovat
-ovatttmcomp <- alone_or_four %>% filter(Species=="OVAT")
+ovatttmcomp <- alone_or_four %>% filter(Species=="OVAT", C_or_D == "D")
+hist((ovatttmcomp$tt100m))
 ovatttmcomp$Composition <- factor(ovatttmcomp$Composition, levels = c("OVAT-C", "CCCC", "AACC", "CCDD"))
-ovatcompmod <- lmer(tt100m ~ Composition + (1|Pot_number), ovatttmcomp)
-summary(ovatcompmod)
-dharm <- simulateResiduals(ovatcompmod)
+ovatttmmod <- lmer(tt100m ~ Composition + (1|Pot_number), ovatttmcomp)
+summary(ovatttmmod)
+dharm <- simulateResiduals(ovatttmmod)
 plot(dharm)
-r.squaredGLMM(ovatcompmod)
-#vimi
-vimittmcomp <- alone_or_four %>% filter(Species=="VIMI")
-vimittmcomp$Composition <- factor(vimittmcomp$Composition, levels = c("VIMI-D", "DDDD", "AADD", "CCDD"))
-vimicompmod <- lmer(tt100m ~ Composition + (1|Pot_number), vimittmcomp)
-summary(vimicompmod)
-dharm <- simulateResiduals(vimicompmod)
-plot(dharm)
-r.squaredGLMM(vimicompmod)
-emmeans(vimicompmod, list(pairwise ~ Composition), adjust="tukey")
+r.squaredGLMM(ovatttmmod)
+emmeans(ovatttmmod, list(pairwise ~ Composition), adjust="tukey")
 
+
+##vimi
+vimittmcomp <- alone_or_four %>% filter(Species=="VIMI", C_or_D == "D")
+hist((vimittmcomp$tt100m))
+vimittmcomp$Composition <- factor(vimittmcomp$Composition, levels = c("VIMI-D", "DDDD", "AADD", "CCDD"))
+vimittmmod <- lmer(tt100m ~ Composition + (1|Pot_number), vimittmcomp)
+dharm <- simulateResiduals(vimittmmod)
+plot(dharm)
+summary(vimittmmod)
+r.squaredGLMM(vimittmmod)
+emmeans(vimittmmod, list(pairwise ~ Composition), adjust="tukey")
 
 ##stats table ##
-tab_model(amygcompmod, ovatcompmod, vimicompmod, transform = NULL)
+tab_model(amygttmmod, ovatttmmod, vimittmmod, transform = NULL)
 
 #testing differences between compositions, e.g. does AACC_ovat take longer
 # to die than AACC_amyg?
-#alone_or_four <- alone_or_four %>% unite("compspecies", Composition:Species, remove = FALSE)
-#need to reorder, haven't done that yet
-#testmod <- lmer(tt100m ~ compspecies + (1|Pot_number), alone_or_four)
-#summary(testmod)
+alone_or_four <- alone_or_four %>% unite("compspecies", Composition:Species, remove = FALSE)
+AACC <- alone_or_four %>% filter(Composition == "AACC")
+ttmcompmod <- lmer(tt100m ~ compspecies + (1|Pot_number), AACC)
+summary(ttmcompmod)
+dharm <- simulateResiduals(ttmcompmod)
+plot(dharm)
+r.squaredGLMM(ttmcompmod)
+emmeans(ttmcompmod, list(pairwise ~ compspecies), adjust="tukey")
 
+## and what about for growth?
+rgrcompmod <- lmer(sqrt(RGR_predrought) ~ compspecies + (1|Pot_number), AACC)
+summary(rgrcompmod)
+dharm <- simulateResiduals(rgrcompmod)
+plot(dharm)
+r.squaredGLMM(rgrcompmod)
+emmeans(rgrcompmod, list(pairwise ~ compspecies), adjust="tukey")
 
-### Coef plot of growth rates alone or with cons or hets
+### Figure 3 - coef plotmortality ~ nbhs ####
 #recall that labels are inverted
-specieslist <- c("AMYG", "OVAT", "VIMI")
-ttmmods <- c(amygcompmod, ovatcompmod, vimicompmod)
-#Making coefficient plot for survival as a function of environment
+amygttmcomp <- alone_or_four %>% filter(Species=="AMYG", C_or_D == "D")
+amygttmcomp <- within(amygttmcomp, Composition[Composition == "AMYG-A"] <- 'alone')
+amygttmcomp <- within(amygttmcomp, Composition[Composition == "AAAA"] <- 'conspecific')
+amygttmcomp <- within(amygttmcomp, Composition[Composition == "AACC"] <- 'amygdalina-ovata')
+amygttmcomp <- within(amygttmcomp, Composition[Composition == "AADD"] <- 'amygdalina-viminalis')
+amygttmcomp$Composition <- factor(amygttmcomp$Composition, levels = c("alone", "conspecific", "amygdalina-ovata", "amygdalina-viminalis"))
+amygttmmod <- lmer(tt100m ~ Composition + (1|Pot_number), amygttmcomp)
+
+ovatttmcomp <- alone_or_four %>% filter(Species=="OVAT", C_or_D == "D")
+ovatttmcomp <- within(ovatttmcomp, Composition[Composition == "OVAT-C"] <- 'alone')
+ovatttmcomp <- within(ovatttmcomp, Composition[Composition == "CCCC"] <- 'conspecific')
+ovatttmcomp <- within(ovatttmcomp, Composition[Composition == "AACC"] <- 'amygdalina-ovata')
+ovatttmcomp <- within(ovatttmcomp, Composition[Composition == "CCDD"] <- 'ovata-viminalis')
+ovatttmcomp$Composition <- factor(ovatttmcomp$Composition, levels = c("alone", "conspecific", "amygdalina-ovata", "ovata-viminalis"))
+ovatttmmod <- lmer(tt100m ~ Composition + (1|Pot_number), ovatttmcomp)
+
+vimittmcomp <- alone_or_four %>% filter(Species=="VIMI", C_or_D == "D")
+vimittmcomp <- within(vimittmcomp, Composition[Composition == "VIMI-D"] <- 'alone')
+vimittmcomp <- within(vimittmcomp, Composition[Composition == "DDDD"] <- 'conspecific')
+vimittmcomp <- within(vimittmcomp, Composition[Composition == "AADD"] <- 'amygdalina-viminalis')
+vimittmcomp <- within(vimittmcomp, Composition[Composition == "CCDD"] <- 'ovata-viminalis')
+vimittmcomp$Composition <- factor(vimittmcomp$Composition, levels = c("alone", "conspecific", "amygdalina-viminalis", "ovata-viminalis"))
+vimittmmod <- lmer(tt100m ~ Composition + (1|Pot_number), vimittmcomp)
+summary(vimittmmod)
+
+ttmmods <- c(amygttmmod, ovatttmmod, vimittmmod)
+dev.off()
+pdf("Output/figure_3.pdf", width=8, height=6)
+#Can specify colors=c('red', 'forestgreen', 'purple') in plot_models but overridden by scale_colour_discrete
 plot_models(ttmmods, transform = NULL, vline.color = "grey", legend.title = "Species",
-            dot.size = 2, line.size = 1)+
+            dot.size = 2, line.size = 1, ci.lvl=0.95)+
   ylab("Estimate")+
+  xlab("Competition treatment")+
   theme_classic()+
-  scale_colour_discrete(labels = c("VIMI", "OVAT", "AMYG"))
+  scale_colour_discrete(labels = c(expression(italic("E. viminalis")), expression(italic("E. ovata")), expression(italic("E. amygdalina"))))+
+  theme(axis.text=element_text(size=16), 
+        axis.title=element_text(size=16),
+        legend.text = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text.align = 0,
+        legend.position = "right",
+        legend.title.align = 0.5)
+dev.off()
 
-### have not updated this section ###
-###with obli too
-#need to rework amyg/ovat/vimi models to include AB, BC and BD responses
-amygttmcomp2 <- alldata %>% filter(Species == "AMYG")
-amygttmcomp2$Composition <- factor(amygttmcomp2$Composition, levels = c("AMYG-A", "AAAA", "AB", "AACC", "AADD"))
-amygcompmod2 <- lmer(tt100m ~ Composition + (1|Pot_number), amygttmcomp2)
-summary(amygcompmod2)
-ovatttmcomp2 <- alldata %>% filter(Species == "OVAT")
-ovatttmcomp2$Composition <- factor(ovatttmcomp2$Composition, levels = c("OVAT-C", "CCCC", "BC", "AACC", "CCDD"))
-ovatcompmod2 <- lmer(tt100m ~ Composition + (1|Pot_number), ovatttmcomp2)
-summary(ovatcompmod2)
-vimittmcomp2 <- alldata %>% filter(Species == "VIMI")
-vimittmcomp2$Composition <- factor(vimittmcomp2$Composition, levels = c("VIMI-D", "DDDD", "AADD", "BD", "CCDD"))
-vimicompmod2 <- lmer(tt100m ~ Composition + (1|Pot_number), vimittmcomp2)
-summary(vimicompmod2)
-
-specieslist2 <- c("AMYG", "OBLI", "OVAT", "VIMI")
-growthmods2 <- c(amygcompmod2, oblicompmod, ovatcompmod2, vimicompmod2)
-plot_models(growthmods2, transform = NULL, vline.color = "grey", legend.title = "Species",
-            dot.size = 2, line.size = 1)+
-  ylab("Estimate")+
-  theme_classic()+
-  scale_colour_discrete(labels = c("VIMI", "OVAT", "OBLI", "AMYG"))
-###
 #### Layout script ####
 #Want to randomly assign numbers to treatments for layout
 #Importing dataframe with designs listed
@@ -1245,9 +1417,14 @@ dharm <- simulateResiduals(ttmwdmod2)
 plot(dharm)
 r.squaredGLMM(ttmwdmod2)
 
+ttmwdmod3 <- lm(mean_tt100m ~ wd, solowatereddata)
+summary(ttmwdmod3)
+dharm <- simulateResiduals(ttmwdmod3) 
+plot(dharm)
+r.squaredGLMM(ttmwdmod3)
+
 ttmhubermod <- lm(mean_tt100m ~ mean_huber_sp, speciestraits)
 summary(ttmhubermod)
 dharm <- simulateResiduals(ttmhubermod) 
 plot(dharm)
 r.squaredGLMM(rgrwdmod)
-

@@ -85,14 +85,21 @@ alldata <- within(alldata, Composition[Pot_number==24] <- 'CCCC')
 alldata <- within(alldata, Species[Pot_number == 100] <- 'VIMI')
 
 #Pots 2 and 19 are actually DDDA with very unhealthy As (buried in beads or tiny)
+#and removing the culprit
 alldata <- within(alldata, Composition[Pot_number == 2] <- 'ADDD')
 alldata <- within(alldata, Composition[Pot_number == 19] <- 'ADDD')
+#Pot 89 has one unusually small and dead plant, different composition, functionally CCC
+#removing the dead plant
+alldata <- within(alldata, Composition[Pot_number == 89] <- 'CCC')
+alldata <- alldata %>% filter(!(Pot_number == 89 & Plant_number == 1)) 
 
 #### Removing data for pots with at least one plant with noted desiccation from fan
 #104_1_OVAT. OVAT-C
 #41_4_AMYG. AADD
+#71_2_AMYG. AACC
 alldata <- alldata %>% filter(!(Pot_number==104))
 alldata <- alldata %>% filter(!(Pot_number==41))
+alldata <- alldata %>% filter(!(Pot_number==71))
 
 ### Two pots with unknown species, removing them (15 AACC and 27 BC)
 alldata <- alldata %>% filter(!Species=='?')
@@ -281,6 +288,8 @@ meandata <- left_join(growthmeans, ttmmeans)
 #sd/sqrt(n) is the standard error. qnorm(0.75) = 1.96
 meandata <- meandata %>% mutate(upper_ttm100 = (mean_tt100m + qnorm(0.75) * sd_tt100m/sqrt(n_ttm)),
                                 lower_ttm100 = (mean_tt100m - qnorm(0.75) * sd_tt100m/sqrt(n_ttm)),
+                                upper_ttm50 = (mean_tt50m + qnorm(0.75) * sd_tt50m/sqrt(n_ttm)),
+                                lower_ttm50 = (mean_tt50m - qnorm(0.75) * sd_tt50m/sqrt(n_ttm)),
                                 upper_rgr = (mean_RGRpredrought + qnorm(0.75) * sd_RGRpredrought/sqrt(n_rgr)),
                                 lower_rgr = (mean_RGRpredrought - qnorm(0.75) * sd_RGRpredrought/sqrt(n_rgr)))
 ### TTM by composition ####
@@ -466,11 +475,10 @@ sometraits <- traitdata %>% select(Pot_number, Composition, Species, mean_ldmc_p
 
 ### Add plant-level data to solo well-watered and drought data
 solowatereddata <- left_join(solowatereddata, sometraits)
-###Merge speciestraits with ttmmeans 
-speciestraits <- left_join(speciestraits, ttmmeans)
-###Merge individual wd with ttmmeans
-wddata <- speciestraits %>% select(Species, mean_wd_sp)
-solodroughtdata <- left_join(solodroughtdata, wddata)
+
+### Add mortality data to solowatereddata
+tt100m_means <- ttmmeans %>% select(Species, mean_tt100m)
+solowatereddata <- left_join(solowatereddata, tt100m_means)
 
 #Calculate species means and confidence intervals
 speciestraits <- sometraits %>% group_by(Species) %>% 
@@ -483,6 +491,13 @@ speciestraits <- sometraits %>% group_by(Species) %>%
             mean_wd_sp = mean(wd, na.rm=T),
             sd_wd_sp = sd(wd, na.rm=T),
             n = n())
+
+###Merge speciestraits with ttmmeans 
+speciestraits <- left_join(speciestraits, ttmmeans)
+###Merge individual wd with ttmmeans
+wddata <- speciestraits %>% select(Species, mean_wd_sp)
+solodroughtdata <- left_join(solodroughtdata, wddata)
+
 #Calculate CIs
 speciestraits <- speciestraits %>% group_by(Species) %>% mutate(upper_huber = (mean_huber_sp + qnorm(0.75) * sd_huber_sp/sqrt(n)),
                                 lower_huber = (mean_huber_sp - qnorm(0.75) * sd_huber_sp/sqrt(n)),
@@ -493,3 +508,10 @@ speciestraits <- speciestraits %>% group_by(Species) %>% mutate(upper_huber = (m
 
 #Merge with species RGR and mort data in meandata
 meandata <- left_join(meandata, speciestraits)
+
+## pots with neighbours only
+nbhdata <- alldata %>% filter(!(Composition =="AMYG-A" | Composition == "OBLI-B" | Composition =="OVAT-C" | Composition =="VIMI-D"))
+nbhdroughtdata <- nbhdata %>% filter(C_or_D == "D")
+
+
+
