@@ -305,6 +305,8 @@ r.squaredGLMM(growthmod2)
 
 ### Plotting for supplement
 #try making row for species:C_or_D
+#geom_text is technically plotting twice, this separates them but not what we want:
+#geom_text(aes(label = outlier), position = position_dodge(width = 1))
 solodata$specieswatering <- paste(solodata$Species,solodata$C_or_D)
 dev.off()
 pdf("Output/supp_control_drought_growth.pdf", width=10, height=5)
@@ -319,6 +321,7 @@ group.colours <- c("C" = "cornflowerblue", "D" = "red2")
                             expression(italic("E. viminalis"))))+
   scale_colour_manual(values = group.colours, name = "Watering treatment", 
                       labels = c("Well-watered", "Drought"))+
+    geom_text(aes(x = Species, y = 2.5, label = 'ab'), col = 'black', size=5)+
   theme_classic()+
     theme(legend.background = NULL, axis.text=element_text(size=16), 
           axis.title=element_text(size=16), legend.text=element_text(size=16),
@@ -1404,7 +1407,7 @@ plot(mean_tt100m ~ mean_huber_sp, col=c('red', 'blue', 'forestgreen', 'purple')[
      ylab="", ylim=c(0,5), xlim=c(0.00015,0.00035), 
      xlab="", tck=-0.01, pch=19, cex=5, cex.axis=4, bty="n", meandata)
 mtext("Mean time to 100% leaf mortality \n(weeks)", side=2, outer=F, cex=3.5, line=7)
-mtext("Mean HV", side=1, outer=F, cex=3.5, line=7)
+mtext("Mean HV (m^2/m^2)", side=1, outer=F, cex=3.5, line=7)
 mtext("B)", side = 1, outer=F, cex = 3.5, line = -44, adj=0.01)
 arrows(x0=meandata$mean_huber_sp, y0=meandata$lower_ttm100,
        x1=meandata$mean_huber_sp, y1=meandata$upper_ttm100, code=3, cex = 4, angle=90, length=0.1, lwd=5)
