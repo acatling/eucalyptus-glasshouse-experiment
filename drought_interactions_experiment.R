@@ -248,7 +248,7 @@ ggplot(solodata, aes(x = Species, y = gr_predrought))+
 #Check this pot - is it amyg or vimi? 100 
 test <- alldata %>% filter(Species=="AMYG" & Composition == "VIMI-D")
 
-## Stats - growth rate model (fig 1) ####
+#### Stats - growth rate model (fig 1) ####
 #Seven weeks before drought
 solodata$Species <- factor(solodata$Species, levels = c("AMYG", "OBLI", "OVAT", "VIMI"))
 growthmod <- lm(sqrt(gr_predrought) ~ Species + Height_1907, solodata)
@@ -637,7 +637,7 @@ growthemmeans <- growth_emmeans %>% select(Species, growth_mean = response, grow
 ttm_growth_emmeans <- left_join(mort100emmeans, growthemmeans)
 
 dev.off()
-pdf("Output/ttm~gr_no_sqrt.pdf", width=21, height=21)
+pdf("Output/figure_4.pdf", width=21, height=21)
 par(oma=c(8,8,1,1), mgp=c(0,3,0), mar=c(3, 3, 1, 1))
 plot(mort_mean ~ growth_mean, col=c('red', 'blue', 'forestgreen', 'purple')[as.factor(ttm_growth_emmeans$Species)], 
      ylab="", ylim=c(0,7), xlim=c(0,7), 
@@ -895,14 +895,26 @@ dev.off()
 #Reorder levels so alone is the reference
 #amygcompdata$Composition <- factor(amygcompdata$Composition, levels = c("AMYG-A", "AAAA", "AACC", "AADD"))
 
-#Using data from previous section, fig. 2
-amygcompmod <- lmer(sqrt(gr_predrought) ~ Composition + Height_1907 + (1|Pot_number), amygcompdata3)
+#Using data from previous section, fig. 2 coef plot
+
+#Scaling initial height to a mean of 0 and SD of 1 so that intercept tells us about growth rate at a mean height
+amygcompdata3$scaled_height <- scale(amygcompdata3$Height_1907, center = TRUE, scale = TRUE)[,1]
+#Remove NAs from data - not necessary, not included in model anyway
+#amygcompdata3 <- amygcompdata3 %>% filter(!(is.na(Composition)))
+amygcompmod <- lmer(sqrt(gr_predrought) ~ Composition + scaled_height + (1|Pot_number), amygcompdata3)
 summary(amygcompmod)
 dharm <- simulateResiduals(amygcompmod)
 plot(dharm)
 r.squaredGLMM(amygcompmod)
 #Only matters how they differ from reference, alone
 
+#Growth of amyg alone at an average height is: 1.8177^2 = 3.3 mm/day
+# and in presence of vimi is: 1.8177^2 - 0.63674^2 = 2.9 mm/day where 0.6367^2 = 0.405 mm/day 
+
+ggplot(amygcompdata3, aes(y = gr_predrought, x = Composition))+
+  geom_boxplot()+
+  geom_point(alpha=0.4)+
+  theme_classic()
 #These two below lines do the same thing as above
 # test <- emmeans(amygcompmod, ~Composition)
 # pairs(test)
@@ -912,7 +924,9 @@ r.squaredGLMM(amygcompmod)
 #
 
 ##obli
-oblicompmod <- lmer(sqrt(gr_predrought) ~ Composition + Height_1907 + (1|Pot_number), oblicompdata2)
+oblicompdata2$scaled_height <- scale(oblicompdata2$Height_1907, center = TRUE, scale = TRUE)[,1]
+
+oblicompmod <- lmer(sqrt(gr_predrought) ~ Composition + scaled_height + (1|Pot_number), oblicompdata2)
 dharm <- simulateResiduals(oblicompmod)
 plot(dharm)
 summary(oblicompmod)
@@ -926,14 +940,18 @@ summary(oblicompmod)
 # tab_model(oblicompmod2)
 
 ###ovat
-ovatcompmod <- lmer(sqrt(gr_predrought) ~ Composition + Height_1907 + (1|Pot_number), ovatcompdata3)
+ovatcompdata3$scaled_height <- scale(ovatcompdata3$Height_1907, center = TRUE, scale = TRUE)[,1]
+
+ovatcompmod <- lmer(sqrt(gr_predrought) ~ Composition + scaled_height + (1|Pot_number), ovatcompdata3)
 summary(ovatcompmod)
 dharm <- simulateResiduals(ovatcompmod)
 plot(dharm)
 r.squaredGLMM(ovatcompmod)
 
 ###vimi
-vimicompmod <- lmer(sqrt(gr_predrought) ~ Composition + Height_1907 + (1|Pot_number), vimicompdata3)
+vimicompdata3$scaled_height <- scale(vimicompdata3$Height_1907, center = TRUE, scale = TRUE)[,1]
+
+vimicompmod <- lmer(sqrt(gr_predrought) ~ Composition + scaled_height + (1|Pot_number), vimicompdata3)
 summary(vimicompmod)
 dharm <- simulateResiduals(vimicompmod)
 plot(dharm)
@@ -945,7 +963,7 @@ r.squaredGLMM(vimicompmod)
 #myfun <- function(x) x^2
 #tab_model(amygcompmod, ovatcompmod, vimicompmod, transform = "myfun")
 
-tab_model(amygcompmod4, oblicompmod4, ovatcompmod4, vimicompmod4, transform = NULL, 
+tab_model(amygcompmod, oblicompmod, ovatcompmod, vimicompmod, transform = NULL, 
           pred.labels = c('Intercept (alone)', 'conspecific', 'amygdalina+obliqua', 'amygdalina+ovata', 'amygdalina+viminalis', 'Initial height', 'obliqua+ovata', 'obliqua+viminalis', 'ovata+viminalis'),
           dv.labels = c('E. amygdalina', 'E. obliqua', 'E. ovata', 'E. viminalis'))
 
@@ -1458,19 +1476,28 @@ legend("bottom", horiz=T, title = NULL, c(expression(italic("E. amygdalina")), e
 dev.off()
 
 ### Stats - traits ####
-#Not enough data to look at this statistically!
 #SPECIES DIFFERENCES
-wdmod <- lm(wd ~ Species, sometraits)
+wdmod <- lm(wd_kg_m3 ~ Species, sometraits)
 wddharm <- simulateResiduals(wdmod)
 plot(wddharm)
 summary(wdmod)
 emmeans(wdmod, list(pairwise ~ Species), adjust="tukey")
 
-slamod <- lm(mean_sla_plant ~ Species, sometraits)
-sladharm <- simulateResiduals(slamod)
-plot(sladharm)
-summary(slamod)
-emmeans(slamod, list(pairwise ~ Species), adjust="tukey")
+ggplot(sometraits, aes(x = Species, y= wd_kg_m3))+
+  geom_boxplot()+
+  geom_jitter(width=0.05)+
+  theme_classic()
+
+lmamod <- lm(mean_lma_plant ~ Species, sometraits)
+lmadharm <- simulateResiduals(lmamod)
+plot(lmadharm)
+summary(lmamod)
+emmeans(lmamod, list(pairwise ~ Species), adjust="tukey")
+
+ggplot(sometraits, aes(x = Species, y= mean_lma_plant))+
+  geom_boxplot()+
+  geom_jitter(width=0.05)+
+  theme_classic()
 
 hubermod <- lm(mean_huber_plant ~ Species, sometraits)
 huberdharm <- simulateResiduals(hubermod) 
@@ -1478,9 +1505,17 @@ plot(huberdharm)
 summary(hubermod)
 emmeans(hubermod, list(pairwise ~ Species), adjust="tukey")
 
-tab_model(hubermod, slamod, wdmod)
+ggplot(sometraits, aes(x = Species, y= mean_huber_plant))+
+  geom_boxplot()+
+  geom_jitter(width=0.05)+
+  theme_classic()
+
+tab_model(wdmod, lmamod, hubermod, transform = NULL, 
+          pred.labels = c('Intercept (E. amygdalina)', "E. obliqua", 'E. ovata', 'E. viminalis'),
+          dv.labels = c('WD', 'LMA', 'HV'))
 
 #CORRELATIONS BETWEEN TRAITS AND gr
+#Not enough data to look at this statistically!
 grslamod <- lmer(sqrt(gr_predrought) ~ mean_sla_plant + (1|Species), solowatereddata)
 summary(grslamod)
 dharm <- simulateResiduals(grslamod) 
